@@ -1,181 +1,637 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>متابعة طلبات المنصة الإلكترونية</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYM Algeria - المواعيد الأسبوعية</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
+        :root {
+            --primary-color: #e30613; /* اللون الأحمر لشركة SYM */
+            --secondary-color: #333;
+            --light-color: #f8f9fa;
+            --dark-color: #212529;
+        }
+
         body {
             font-family: 'Cairo', sans-serif;
-            direction: rtl;
-            background-color: #f0f4f8;
-            margin: 0;
-            padding: 0;
+            background-color: #f5f5f5;
+            color: var(--dark-color);
         }
 
-        header {
-            background-color: #db092b;
-            color: white;
-            padding: 20px;
-            text-align: center;
+        .navbar {
+            background-color: var(--primary-color) !important;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
 
-        header img {
-            height: 60px;
-            margin-bottom: 10px;
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.5rem;
         }
 
-        .container {
-            max-width: 600px;
-            background: white;
-            margin: 50px auto;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            text-align: center;
+        .nav-link {
+            font-weight: 600;
         }
 
-        input[type="text"], input[type="password"] {
-            padding: 12px;
-            width: 80%;
-            margin: 10px 0;
-            font-size: 16px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-        }
-
-        button {
-            padding: 12px 20px;
-            font-size: 16px;
+        .card {
             border: none;
-            border-radius: 8px;
-            background-color: #db092b;
-            color: white;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-
-        button:hover {
-            background-color: #DB092B;
-        }
-
-        .result {
-            margin-top: 30px;
-            background-color: #f9f9f9;
-            padding: 20px;
             border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
         }
 
-        #printBtn {
-            background-color: #4caf50;
+        .card-header {
+            background-color: var(--primary-color);
+            color: white;
+            border-bottom: none;
+            font-weight: 700;
         }
 
-        #printBtn:hover {
-            background-color: #388e3c;
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .btn-primary:hover {
+            background-color: #c00510;
+            border-color: #c00510;
+        }
+
+        .btn-outline-primary {
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .btn-outline-primary:hover {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        .table th {
+            background-color: var(--primary-color);
+            color: white;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .table td {
+            vertical-align: middle;
+        }
+
+        .appointment-cell {
+            cursor: pointer;
+            transition: background-color 0.3s;
+            min-height: 60px;
+        }
+
+        .appointment-cell:hover {
+            background-color: rgba(227, 6, 19, 0.1);
+        }
+
+        .appointment-item {
+            background-color: rgba(227, 6, 19, 0.05);
+            border-left: 3px solid var(--primary-color);
+            padding: 8px;
+            margin: 2px;
+            border-radius: 5px;
+        }
+
+        .form-control, .form-select {
+            border-radius: 8px;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.25rem rgba(227, 6, 19, 0.25);
+        }
+
+        .logo {
+            height: 40px;
+            margin-right: 10px;
+        }
+
+        .footer {
+            background-color: var(--dark-color);
+            color: white;
+            padding: 20px 0;
+            margin-top: 40px;
+        }
+
+        /* تعديلات RTL */
+        [dir="rtl"] .me-2 {
+            margin-left: 0.5rem !important;
+            margin-right: 0 !important;
+        }
+
+        [dir="rtl"] .ms-2 {
+            margin-right: 0.5rem !important;
+            margin-left: 0 !important;
         }
     </style>
 </head>
 <body>
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">
+                <img src="https://via.placeholder.com/150x50?text=SYM+Algeria" alt="SYM Algeria" class="logo">
+                نظام إدارة المواعيد
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="index.html">
+                            <i class="fas fa-calendar-day me-1"></i> المهام اليومية
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="appointments.html">
+                            <i class="fas fa-calendar-week me-1"></i> المواعيد
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="inventory.html">
+                            <i class="fas fa-boxes me-1"></i> المخزون
+                        </a>
+                    </li>
+                </ul>
+                <div class="d-flex">
+                    <button id="logoutBtn" class="btn btn-outline-light">
+                        <i class="fas fa-sign-out-alt me-1"></i> تسجيل الخروج
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
 
-<header>
-<img src="https://i.imgur.com/cEUkK67.png" alt="شعار الشركة" style="width: 190px; height: auto;">
+    <div class="container my-5">
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-header">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4 class="mb-0">
+                                <i class="fas fa-calendar-week me-2"></i>جدول المواعيد الأسبوعية
+                            </h4>
+                            <div>
+                                <button id="prevWeekBtn" class="btn btn-sm btn-light me-2"><i class="fas fa-arrow-right"></i> الأسبوع السابق</button>
+                                <span id="currentWeekRange" class="fw-bold">الأسبوع الحالي</span>
+                                <button id="nextWeekBtn" class="btn btn-sm btn-light ms-2">الأسبوع التالي <i class="fas fa-arrow-left"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addClientModal">
+                                    <i class="fas fa-plus me-1"></i> إضافة زبون جديد
+                                </button>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <input type="text" id="searchClientInput" class="form-control" placeholder="بحث عن زبون...">
+                                    <button class="btn btn-outline-secondary" id="searchClientBtn">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
 
-    <h1>متابعة طلبات المنصة الإلكترونية</h1>
-</header>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>الزبون</th>
+                                        <th>الأحد</th>
+                                        <th>الإثنين</th>
+                                        <th>الثلاثاء</th>
+                                        <th>الأربعاء</th>
+                                        <th>الخميس</th>
+                                        <th>الجمعة</th>
+                                        <th>السبت</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="appointmentsTable">
+                                    <!-- المواعيد ستظهر هنا -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<div class="container" id="loginBox">
-    <h3>أدخل كلمة المرور للدخول</h3>
-    <input type="password" id="passwordInput" placeholder="كلمة المرور">
-    <br>
-    <button onclick="verifyPassword()">دخول</button>
-    <p id="errorText" style="color:red;"></p>
-</div>
+    <!-- نافذة إضافة زبون جديد -->
+    <div class="modal fade" id="addClientModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">إضافة زبون جديد</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="clientName" class="form-label">اسم الزبون</label>
+                        <input type="text" class="form-control" id="clientName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="clientPhone" class="form-label">رقم الهاتف</label>
+                        <input type="tel" class="form-control" id="clientPhone">
+                    </div>
+                    <div class="mb-3">
+                        <label for="clientAddress" class="form-label">العنوان</label>
+                        <textarea class="form-control" id="clientAddress" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" id="saveClientBtn" class="btn btn-primary">حفظ الزبون</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<div class="container" id="mainContent" style="display:none;">
-    <h3>أدخل رقم هاتفك </h3>
-    <input type="text" id="studentId" placeholder="رقم الهاتف المسجل">
-    <br>
-    <button onclick="showResult()">عرض النتيجة</button>
-    <div class="result" id="resultBox"></div>
-    <button id="printBtn" onclick="printResult()" style="display:none;">طباعة النتيجة</button>
-</div>
+    <!-- نافذة إضافة موعد -->
+    <div class="modal fade" id="addAppointmentModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">إضافة موعد جديد</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="appointmentClientId">
+                    <input type="hidden" id="appointmentDay">
+                    <div class="mb-3">
+                        <label for="appointmentTime" class="form-label">وقت الموعد</label>
+                        <input type="time" class="form-control" id="appointmentTime" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="appointmentDetails" class="form-label">تفاصيل الموعد</label>
+                        <textarea class="form-control" id="appointmentDetails" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="button" id="saveAppointmentBtn" class="btn btn-primary">حفظ الموعد</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<script>
-    const password = "sym123"; // غيّر كلمة المرور حسب الرغبة
-    let students = {};
+    <footer class="footer">
+        <div class="container text-center">
+            <p class="mb-0">جميع الحقوق محفوظة &copy; 2023 SYM Algeria</p>
+        </div>
+    </footer>
 
-    function verifyPassword() {
-        const input = document.getElementById("passwordInput").value;
-        const errorText = document.getElementById("errorText");
-        if (input === password) {
-            document.getElementById("loginBox").style.display = "none";
-            document.getElementById("mainContent").style.display = "block";
-            loadExcelFromURL(); // تحميل البيانات بعد الدخول
-        } else {
-            errorText.textContent = "كلمة المرور غير صحيحة.";
-        }
-    }
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script>
+        // تهيئة Firebase
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            databaseURL: "YOUR_DATABASE_URL",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
 
-    async function loadExcelFromURL() {
-        const url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTgq_fCVYPzADsm5bwrukjW-3F5YuwXNpwRv6R4lOpqubU7HVTbXo_F_neHq6KdagnxfM0eDp8Lx2MK/pub?output=xlsx"; // ✳️ غيّر هذا الرابط إلى رابط Excel مباشر
-        try {
-            const response = await fetch(url);
-            const arrayBuffer = await response.arrayBuffer();
-            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const data = XLSX.utils.sheet_to_json(sheet);
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
 
-            students = {};
-            data.forEach(row => {
-                students[row.ID] = {
-                    name: row.Name,
-                    grade: row.Grade,
-                    note: row.Note,
-                    status: row.Status
-                };
+        const database = firebase.database();
+        const auth = firebase.auth();
+
+        // تسجيل الدخول (يمكنك تغيير هذا لنظام تسجيل دخول حقيقي)
+        auth.signInAnonymously()
+            .then(() => {
+                console.log("تم تسجيل الدخول كمستخدم مجهول");
+            })
+            .catch((error) => {
+                console.error("خطأ في تسجيل الدخول:", error);
             });
 
-            alert("يمكنك البحث");
-        } catch (error) {
-            alert("يوجد مشكل في الموقع.");
-            console.error(error);
-        }
-    }
+        // تسجيل الخروج
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            auth.signOut().then(() => {
+                window.location.href = 'login.html';
+            });
+        });
 
-    function showResult() {
-        const id = document.getElementById("studentId").value.trim();
-        const resultBox = document.getElementById("resultBox");
-        const printBtn = document.getElementById("printBtn");
-
-        if (students[id]) {
-            const s = students[id];
-            resultBox.innerHTML = `
-                <div id="printArea">
-                    <h3>الاسم: ${s.name}</h3>
-                    <p>نوع الدراجة: ${s.grade}</p>
-                    <p>الولاية: ${s.note}</p>
-                    <p> حالة الطلب: ${s.status}</p>
-                </div>
-            `;
-            printBtn.style.display = "inline-block";
-        } else {
-            resultBox.innerHTML = "<p style='color:red;'>الرقم غير موجود.</p>";
-            printBtn.style.display = "none";
-        }
-    }
-
-    function printResult() {
-        const content = document.getElementById("printArea").innerHTML;
-        const w = window.open('', '', 'width=800,height=600');
-        w.document.write('<html><head><title>نتيجة الطلب</title></head><body style="direction:rtl;font-family:Cairo;">');
-        w.document.write(content);
-        w.document.write('</body></html>');
-        w.document.close();
-        w.print();
-    }
-</script>
-
+        // كود المواعيد الأسبوعية
+        document.addEventListener('DOMContentLoaded', function() {
+            const prevWeekBtn = document.getElementById('prevWeekBtn');
+            const nextWeekBtn = document.getElementById('nextWeekBtn');
+            const currentWeekRange = document.getElementById('currentWeekRange');
+            const appointmentsTable = document.getElementById('appointmentsTable');
+            const searchClientInput = document.getElementById('searchClientInput');
+            const searchClientBtn = document.getElementById('searchClientBtn');
+            const clientNameInput = document.getElementById('clientName');
+            const clientPhoneInput = document.getElementById('clientPhone');
+            const clientAddressInput = document.getElementById('clientAddress');
+            const saveClientBtn = document.getElementById('saveClientBtn');
+            const appointmentTimeInput = document.getElementById('appointmentTime');
+            const appointmentDetailsInput = document.getElementById('appointmentDetails');
+            const saveAppointmentBtn = document.getElementById('saveAppointmentBtn');
+            
+            const addClientModal = new bootstrap.Modal(document.getElementById('addClientModal'));
+            const addAppointmentModal = new bootstrap.Modal(document.getElementById('addAppointmentModal'));
+            
+            let currentWeekStart = getWeekStartDate(new Date());
+            let clients = [];
+            let appointments = [];
+            let currentClientId = null;
+            let currentAppointmentDay = null;
+            
+            // الحصول على تاريخ بداية الأسبوع
+            function getWeekStartDate(date) {
+                const day = date.getDay();
+                const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+                return new Date(date.setDate(diff));
+            }
+            
+            // تحديث عرض نطاق الأسبوع
+            function updateWeekRangeDisplay() {
+                const weekEnd = new Date(currentWeekStart);
+                weekEnd.setDate(weekEnd.getDate() + 6);
+                
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                const startStr = currentWeekStart.toLocaleDateString('ar-EG', options);
+                const endStr = weekEnd.toLocaleDateString('ar-EG', options);
+                
+                currentWeekRange.textContent = `${startStr} - ${endStr}`;
+                loadAppointments();
+            }
+            
+            // تحميل الزبائن من Firebase
+            function loadClients() {
+                const userId = auth.currentUser?.uid;
+                
+                if (!userId) return;
+                
+                database.ref(`users/${userId}/clients`).once('value')
+                    .then((snapshot) => {
+                        clients = [];
+                        
+                        if (snapshot.exists()) {
+                            const clientsData = snapshot.val();
+                            clients = Object.entries(clientsData).map(([id, client]) => ({ id, ...client }));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading clients:', error);
+                    });
+            }
+            
+            // تحميل المواعيد من Firebase
+            function loadAppointments() {
+                const weekKey = getWeekKey(currentWeekStart);
+                const userId = auth.currentUser?.uid;
+                
+                if (!userId) return;
+                
+                database.ref(`users/${userId}/appointments/${weekKey}`).once('value')
+                    .then((snapshot) => {
+                        appointmentsTable.innerHTML = '';
+                        appointments = [];
+                        
+                        if (snapshot.exists()) {
+                            const appointmentsData = snapshot.val();
+                            appointments = Object.entries(appointmentsData).map(([id, appointment]) => ({ id, ...appointment }));
+                            
+                            // تجميع المواعيد حسب الزبون ويوم الأسبوع
+                            const appointmentsByClient = {};
+                            
+                            appointments.forEach(appointment => {
+                                if (!appointmentsByClient[appointment.clientId]) {
+                                    appointmentsByClient[appointment.clientId] = {};
+                                }
+                                appointmentsByClient[appointment.clientId][appointment.day] = appointment;
+                            });
+                            
+                            // عرض المواعيد في الجدول
+                            clients.forEach(client => {
+                                if (appointmentsByClient[client.id] || searchClientInput.value === '' || 
+                                    client.name.includes(searchClientInput.value)) {
+                                    displayClientAppointments(client, appointmentsByClient[client.id] || {});
+                                }
+                            });
+                        } else {
+                            // عرض الزبائن فقط إذا لم تكن هناك مواعيد
+                            clients.forEach(client => {
+                                if (searchClientInput.value === '' || client.name.includes(searchClientInput.value)) {
+                                    displayClientAppointments(client, {});
+                                }
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading appointments:', error);
+                    });
+            }
+            
+            // توليد مفتاح الأسبوع للتخزين في قاعدة البيانات
+            function getWeekKey(date) {
+                const year = date.getFullYear();
+                const month = date.getMonth() + 1;
+                const day = date.getDate();
+                return `${year}-${month}-${day}`;
+            }
+            
+            // عرض مواعيد الزبون في الجدول
+            function displayClientAppointments(client, clientAppointments) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <strong>${client.name}</strong>
+                        <div class="text-muted small">${client.phone || 'لا يوجد رقم'} | ${client.address || 'لا يوجد عنوان'}</div>
+                    </td>
+                    <td class="appointment-cell" data-day="0" data-client="${client.id}"></td>
+                    <td class="appointment-cell" data-day="1" data-client="${client.id}"></td>
+                    <td class="appointment-cell" data-day="2" data-client="${client.id}"></td>
+                    <td class="appointment-cell" data-day="3" data-client="${client.id}"></td>
+                    <td class="appointment-cell" data-day="4" data-client="${client.id}"></td>
+                    <td class="appointment-cell" data-day="5" data-client="${client.id}"></td>
+                    <td class="appointment-cell" data-day="6" data-client="${client.id}"></td>
+                `;
+                
+                // ملء المواعيد الموجودة
+                for (const day in clientAppointments) {
+                    const appointment = clientAppointments[day];
+                    const cell = row.querySelector(`td[data-day="${day}"]`);
+                    
+                    if (cell) {
+                        cell.innerHTML = `
+                            <div class="appointment-item">
+                                <div class="d-flex justify-content-between">
+                                    <strong>${appointment.time}</strong>
+                                    <div>
+                                        <button class="btn btn-sm btn-outline-danger delete-appointment" data-id="${appointment.id}">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="small">${appointment.details || 'لا توجد تفاصيل'}</div>
+                            </div>
+                        `;
+                        
+                        cell.querySelector('.delete-appointment').addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            deleteAppointment(appointment.id);
+                        });
+                    }
+                }
+                
+                // إضافة حدث النقر لإنشاء موعد جديد
+                row.querySelectorAll('.appointment-cell').forEach(cell => {
+                    cell.addEventListener('click', () => {
+                        openAddAppointmentModal(
+                            cell.dataset.client,
+                            parseInt(cell.dataset.day)
+                        );
+                    });
+                });
+                
+                appointmentsTable.appendChild(row);
+            }
+            
+            // فتح نافذة إضافة موعد جديد
+            function openAddAppointmentModal(clientId, day) {
+                currentClientId = clientId;
+                currentAppointmentDay = day;
+                
+                // إعادة تعيين النموذج
+                appointmentTimeInput.value = '';
+                appointmentDetailsInput.value = '';
+                
+                addAppointmentModal.show();
+            }
+            
+            // إضافة زبون جديد
+            function addClient() {
+                const name = clientNameInput.value.trim();
+                const phone = clientPhoneInput.value.trim();
+                const address = clientAddressInput.value.trim();
+                
+                if (!name) {
+                    alert('اسم الزبون مطلوب');
+                    return;
+                }
+                
+                const userId = auth.currentUser?.uid;
+                
+                if (!userId) return;
+                
+                const newClientRef = database.ref(`users/${userId}/clients`).push();
+                newClientRef.set({
+                    name: name,
+                    phone: phone,
+                    address: address,
+                    createdAt: firebase.database.ServerValue.TIMESTAMP
+                })
+                .then(() => {
+                    clientNameInput.value = '';
+                    clientPhoneInput.value = '';
+                    clientAddressInput.value = '';
+                    addClientModal.hide();
+                    loadClients();
+                    loadAppointments();
+                })
+                .catch(error => {
+                    console.error('Error adding client:', error);
+                });
+            }
+            
+            // إضافة موعد جديد
+            function addAppointment() {
+                const time = appointmentTimeInput.value.trim();
+                const details = appointmentDetailsInput.value.trim();
+                
+                if (!time) {
+                    alert('وقت الموعد مطلوب');
+                    return;
+                }
+                
+                const weekKey = getWeekKey(currentWeekStart);
+                const userId = auth.currentUser?.uid;
+                
+                if (!userId || !currentClientId || currentAppointmentDay === null) return;
+                
+                const newAppointmentRef = database.ref(`users/${userId}/appointments/${weekKey}`).push();
+                newAppointmentRef.set({
+                    clientId: currentClientId,
+                    day: currentAppointmentDay,
+                    time: time,
+                    details: details,
+                    createdAt: firebase.database.ServerValue.TIMESTAMP
+                })
+                .then(() => {
+                    addAppointmentModal.hide();
+                    loadAppointments();
+                })
+                .catch(error => {
+                    console.error('Error adding appointment:', error);
+                });
+            }
+            
+            // حذف موعد
+            function deleteAppointment(appointmentId) {
+                if (!confirm('هل أنت متأكد من حذف هذا الموعد؟')) return;
+                
+                const weekKey = getWeekKey(currentWeekStart);
+                const userId = auth.currentUser?.uid;
+                
+                if (!userId) return;
+                
+                database.ref(`users/${userId}/appointments/${weekKey}/${appointmentId}`).remove()
+                .then(() => {
+                    loadAppointments();
+                })
+                .catch(error => {
+                    console.error('Error deleting appointment:', error);
+                });
+            }
+            
+            // التنقل بين الأسابيع
+            function navigateWeeks(weeks) {
+                currentWeekStart.setDate(currentWeekStart.getDate() + (weeks * 7));
+                updateWeekRangeDisplay();
+            }
+            
+            // البحث عن زبون
+            function searchClient() {
+                loadAppointments();
+            }
+            
+            // أحداث المستخدم
+            prevWeekBtn.addEventListener('click', () => navigateWeeks(-1));
+            nextWeekBtn.addEventListener('click', () => navigateWeeks(1));
+            
+            saveClientBtn.addEventListener('click', addClient);
+            saveAppointmentBtn.addEventListener('click', addAppointment);
+            
+            searchClientBtn.addEventListener('click', searchClient);
+            searchClientInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') searchClient();
+            });
+            
+            // تهيئة الصفحة
+            loadClients();
+            updateWeekRangeDisplay();
+        });
+    </script>
 </body>
 </html>
-
-
