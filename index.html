@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SYM Algeria - تقارير المخزون</title>
+    <title>SYM Algeria - المهام اليومية</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -49,6 +49,73 @@
             font-weight: 700;
         }
 
+        .task-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .task-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .task-checkbox {
+            margin-left: 12px;
+        }
+
+        .task-text {
+            flex-grow: 1;
+            margin: 0 12px;
+            font-weight: 500;
+        }
+
+        .task-actions {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .task-item:hover .task-actions {
+            opacity: 1;
+        }
+
+        .task-status {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .status-in-progress {
+            background-color: #cce5ff;
+            color: #004085;
+        }
+
+        .status-completed {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .note-item {
+            background-color: #f8f9fa;
+            border-left: 4px solid var(--primary-color);
+            padding: 12px;
+            margin-bottom: 12px;
+            border-radius: 0 8px 8px 0;
+        }
+
         .btn-primary {
             background-color: var(--primary-color);
             border-color: var(--primary-color);
@@ -67,40 +134,17 @@
         .btn-outline-primary:hover {
             background-color: var(--primary-color);
             border-color: var(--primary-color);
-            color: white;
         }
 
-        .table th {
+        .progress {
+            height: 12px;
+            border-radius: 6px;
+            background-color: #e9ecef;
+        }
+
+        .progress-bar {
             background-color: var(--primary-color);
-            color: white;
-            text-align: center;
-            vertical-align: middle;
-        }
-
-        .table td {
-            vertical-align: middle;
-        }
-
-        .status-badge {
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-weight: bold;
-            font-size: 14px;
-        }
-
-        .status-corrected {
-            background-color: #d4edda;
-            color: #155724;
-        }
-
-        .status-in-process {
-            background-color: #fff3cd;
-            color: #856404;
-        }
-
-        .status-not-delivered {
-            background-color: #f8d7da;
-            color: #721c24;
+            transition: width 0.6s ease;
         }
 
         .form-control, .form-select {
@@ -143,7 +187,7 @@
         <div class="container">
             <a class="navbar-brand" href="index.html">
                 <img src="https://via.placeholder.com/150x50?text=SYM+Algeria" alt="SYM Algeria" class="logo">
-                نظام إدارة المخزون
+                نظام إدارة المهام
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -151,7 +195,7 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="index.html">
+                        <a class="nav-link active" href="index.html">
                             <i class="fas fa-calendar-day me-1"></i> المهام اليومية
                         </a>
                     </li>
@@ -161,7 +205,7 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link active" href="inventory.html">
+                        <a class="nav-link" href="inventory.html">
                             <i class="fas fa-boxes me-1"></i> المخزون
                         </a>
                     </li>
@@ -177,57 +221,49 @@
 
     <div class="container my-5">
         <div class="row">
-            <div class="col-12">
+            <div class="col-lg-8 mx-auto">
                 <div class="card shadow">
                     <div class="card-header">
                         <div class="d-flex justify-content-between align-items-center">
                             <h4 class="mb-0">
-                                <i class="fas fa-clipboard-list me-2"></i>تقارير المخزون
+                                <i class="fas fa-list-check me-2"></i>قائمة المهام اليومية
                             </h4>
-                            <button class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#addInventoryModal">
-                                <i class="fas fa-plus me-1"></i> إضافة تقرير جديد
-                            </button>
+                            <div>
+                                <input type="date" id="taskDate" class="form-control">
+                                <button id="prevDayBtn" class="btn btn-sm btn-light ms-2"><i class="fas fa-arrow-right"></i></button>
+                                <button id="nextDayBtn" class="btn btn-sm btn-light"><i class="fas fa-arrow-left"></i></button>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body">
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <div class="input-group">
-                                    <input type="text" id="searchInventoryInput" class="form-control" placeholder="بحث عن زبون أو مخزني...">
-                                    <button class="btn btn-outline-secondary" id="searchInventoryBtn">
-                                        <i class="fas fa-search"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <select id="filterStatus" class="form-select">
-                                    <option value="all">جميع الحالات</option>
-                                    <option value="corrected">تم التصحيح</option>
-                                    <option value="in-process">قيد المعالجة</option>
-                                    <option value="not-delivered">لم تسلم</option>
-                                </select>
-                            </div>
+                        <div class="input-group mb-4">
+                            <input type="text" id="newTaskInput" class="form-control" placeholder="أضف مهمة جديدة...">
+                            <button class="btn btn-primary" id="addTaskBtn">
+                                <i class="fas fa-plus me-1"></i> إضافة
+                            </button>
                         </div>
-
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>التاريخ</th>
-                                        <th>اسم الزبون</th>
-                                        <th>الكمية المسلمة</th>
-                                        <th>الكمية الموجودة</th>
-                                        <th>الفارق</th>
-                                        <th>المخزني المسؤول</th>
-                                        <th>حالة التقرير</th>
-                                        <th>الملاحظات</th>
-                                        <th>إجراءات</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="inventoryTable">
-                                    <!-- التقارير ستظهر هنا -->
-                                </tbody>
-                            </table>
+                        
+                        <div class="mb-4">
+                            <textarea id="newNoteInput" class="form-control" placeholder="أضف ملاحظة..." rows="3"></textarea>
+                            <button class="btn btn-secondary mt-2" id="addNoteBtn">
+                                <i class="fas fa-note-sticky me-1"></i> حفظ الملاحظة
+                            </button>
+                        </div>
+                        
+                        <div id="notesSection" class="mb-4 p-3 bg-light rounded">
+                            <h5><i class="fas fa-notes me-2"></i>الملاحظات</h5>
+                            <div id="notesList"></div>
+                        </div>
+                        
+                        <div id="tasksList">
+                            <!-- المهام ستظهر هنا -->
+                        </div>
+                        
+                        <div class="mt-4">
+                            <div class="progress">
+                                <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <small class="text-muted" id="progressText">0% مكتمل (0 من 0 مهمة)</small>
                         </div>
                     </div>
                 </div>
@@ -235,109 +271,26 @@
         </div>
     </div>
 
-    <!-- نافذة إضافة تقرير جديد -->
-    <div class="modal fade" id="addInventoryModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
+    <!-- نافذة تعديل المهمة -->
+    <div class="modal fade" id="editTaskModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title">إضافة تقرير مخزون جديد</h5>
+                    <h5 class="modal-title">تعديل المهمة</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="inventoryClient" class="form-label">اسم الزبون</label>
-                                <select class="form-select" id="inventoryClient" required>
-                                    <option value="" selected disabled>اختر الزبون</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="deliveredQuantity" class="form-label">الكمية المسلمة من الشركة</label>
-                                <input type="number" class="form-control" id="deliveredQuantity" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="existingQuantity" class="form-label">الكمية الموجودة</label>
-                                <input type="number" class="form-control" id="existingQuantity" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="inventoryEmployee" class="form-label">المخزني المسؤول</label>
-                                <input type="text" class="form-control" id="inventoryEmployee" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="inventoryStatus" class="form-label">حالة التقرير</label>
-                                <select class="form-select" id="inventoryStatus" required>
-                                    <option value="corrected">تم التصحيح</option>
-                                    <option value="in-process">قيد المعالجة</option>
-                                    <option value="not-delivered">لم تسلم</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="inventoryNotes" class="form-label">الملاحظات النهائية</label>
-                                <textarea class="form-control" id="inventoryNotes" rows="3"></textarea>
-                            </div>
-                        </div>
-                    </div>
+                    <input type="text" id="editTaskInput" class="form-control mb-3">
+                    <select id="editTaskStatus" class="form-select">
+                        <option value="pending">قيد الإنتظار</option>
+                        <option value="in-progress">قيد التنفيذ</option>
+                        <option value="completed">مكتملة</option>
+                    </select>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="button" id="saveInventoryBtn" class="btn btn-primary">حفظ التقرير</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- نافذة تعديل التقرير -->
-    <div class="modal fade" id="editInventoryModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title">تعديل تقرير المخزون</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" id="editInventoryId">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="editInventoryClient" class="form-label">اسم الزبون</label>
-                                <input type="text" class="form-control" id="editInventoryClient" readonly>
-                            </div>
-                            <div class="mb-3">
-                                <label for="editDeliveredQuantity" class="form-label">الكمية المسلمة من الشركة</label>
-                                <input type="number" class="form-control" id="editDeliveredQuantity" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="editExistingQuantity" class="form-label">الكمية الموجودة</label>
-                                <input type="number" class="form-control" id="editExistingQuantity" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="editInventoryEmployee" class="form-label">المخزني المسؤول</label>
-                                <input type="text" class="form-control" id="editInventoryEmployee" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="editInventoryStatus" class="form-label">حالة التقرير</label>
-                                <select class="form-select" id="editInventoryStatus" required>
-                                    <option value="corrected">تم التصحيح</option>
-                                    <option value="in-process">قيد المعالجة</option>
-                                    <option value="not-delivered">لم تسلم</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="editInventoryNotes" class="form-label">الملاحظات النهائية</label>
-                                <textarea class="form-control" id="editInventoryNotes" rows="3"></textarea>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="button" id="updateInventoryBtn" class="btn btn-primary">حفظ التغييرات</button>
-                    <button type="button" id="deleteInventoryBtn" class="btn btn-danger">حذف التقرير</button>
+                    <button type="button" id="saveTaskBtn" class="btn btn-primary">حفظ التغييرات</button>
+                    <button type="button" id="deleteTaskBtn" class="btn btn-danger">حذف المهمة</button>
                 </div>
             </div>
         </div>
@@ -387,290 +340,338 @@
             });
         });
 
-        // كود تقارير المخزون
+        // كود المهام اليومية
         document.addEventListener('DOMContentLoaded', function() {
-            const inventoryTable = document.getElementById('inventoryTable');
-            const searchInventoryInput = document.getElementById('searchInventoryInput');
-            const searchInventoryBtn = document.getElementById('searchInventoryBtn');
-            const filterStatus = document.getElementById('filterStatus');
-            const inventoryClientSelect = document.getElementById('inventoryClient');
-            const deliveredQuantityInput = document.getElementById('deliveredQuantity');
-            const existingQuantityInput = document.getElementById('existingQuantity');
-            const inventoryEmployeeInput = document.getElementById('inventoryEmployee');
-            const inventoryStatusSelect = document.getElementById('inventoryStatus');
-            const inventoryNotesInput = document.getElementById('inventoryNotes');
-            const saveInventoryBtn = document.getElementById('saveInventoryBtn');
-            const editInventoryClientInput = document.getElementById('editInventoryClient');
-            const editDeliveredQuantityInput = document.getElementById('editDeliveredQuantity');
-            const editExistingQuantityInput = document.getElementById('editExistingQuantity');
-            const editInventoryEmployeeInput = document.getElementById('editInventoryEmployee');
-            const editInventoryStatusSelect = document.getElementById('editInventoryStatus');
-            const editInventoryNotesInput = document.getElementById('editInventoryNotes');
-            const updateInventoryBtn = document.getElementById('updateInventoryBtn');
-            const deleteInventoryBtn = document.getElementById('deleteInventoryBtn');
+            const taskDateInput = document.getElementById('taskDate');
+            const newTaskInput = document.getElementById('newTaskInput');
+            const addTaskBtn = document.getElementById('addTaskBtn');
+            const tasksList = document.getElementById('tasksList');
+            const newNoteInput = document.getElementById('newNoteInput');
+            const addNoteBtn = document.getElementById('addNoteBtn');
+            const notesList = document.getElementById('notesList');
+            const prevDayBtn = document.getElementById('prevDayBtn');
+            const nextDayBtn = document.getElementById('nextDayBtn');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
             
-            const addInventoryModal = new bootstrap.Modal(document.getElementById('addInventoryModal'));
-            const editInventoryModal = new bootstrap.Modal(document.getElementById('editInventoryModal'));
+            const editTaskModal = new bootstrap.Modal(document.getElementById('editTaskModal'));
+            const editTaskInput = document.getElementById('editTaskInput');
+            const editTaskStatus = document.getElementById('editTaskStatus');
+            const saveTaskBtn = document.getElementById('saveTaskBtn');
+            const deleteTaskBtn = document.getElementById('deleteTaskBtn');
             
-            let inventoryReports = [];
-            let clients = [];
-            let currentReportId = null;
+            let currentDate = new Date();
+            let currentTaskId = null;
+            let currentTasks = [];
+            let currentNotes = [];
             
-            // تحميل الزبائن من Firebase
-            function loadClients() {
-                const userId = auth.currentUser?.uid;
-                
-                if (!userId) return;
-                
-                database.ref(`users/${userId}/clients`).once('value')
-                    .then((snapshot) => {
-                        clients = [];
-                        inventoryClientSelect.innerHTML = '<option value="" selected disabled>اختر الزبون</option>';
-                        
-                        if (snapshot.exists()) {
-                            const clientsData = snapshot.val();
-                            clients = Object.entries(clientsData).map(([id, client]) => ({ id, ...client }));
-                            
-                            // ملء قائمة الزبائن في النموذج
-                            clients.forEach(client => {
-                                const option = document.createElement('option');
-                                option.value = client.id;
-                                option.textContent = client.name;
-                                inventoryClientSelect.appendChild(option);
-                            });
-                        }
-                        
-                        loadInventoryReports();
-                    })
-                    .catch(error => {
-                        console.error('Error loading clients:', error);
-                    });
+            function formatDate(date) {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
             }
             
-            // تحميل تقارير المخزون من Firebase
-            function loadInventoryReports() {
+            function updateDateDisplay() {
+                taskDateInput.value = formatDate(currentDate);
+                loadTasks();
+                loadNotes();
+            }
+            
+            function loadTasks() {
+                const dateKey = formatDate(currentDate);
                 const userId = auth.currentUser?.uid;
                 
                 if (!userId) return;
                 
-                database.ref(`users/${userId}/inventory`).once('value')
+                database.ref(`users/${userId}/tasks/${dateKey}`).once('value')
                     .then((snapshot) => {
-                        inventoryTable.innerHTML = '';
-                        inventoryReports = [];
+                        tasksList.innerHTML = '';
+                        currentTasks = [];
                         
                         if (snapshot.exists()) {
-                            const reportsData = snapshot.val();
-                            inventoryReports = Object.entries(reportsData).map(([id, report]) => ({ id, ...report }));
+                            const tasksData = snapshot.val();
+                            currentTasks = Object.entries(tasksData).map(([id, task]) => ({ id, ...task }));
                             
-                            // تصفية حسب حالة البحث
-                            const searchTerm = searchInventoryInput.value.toLowerCase();
-                            const statusFilter = filterStatus.value;
+                            const completedTasks = currentTasks.filter(task => task.status === 'completed').length;
+                            const totalTasks = currentTasks.length;
+                            const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
                             
-                            const filteredReports = inventoryReports.filter(report => {
-                                const client = clients.find(c => c.id === report.clientId);
-                                const clientName = client ? client.name : '';
-                                const matchesSearch = searchTerm === '' || 
-                                    clientName.toLowerCase().includes(searchTerm) || 
-                                    report.employee.toLowerCase().includes(searchTerm);
-                                const matchesStatus = statusFilter === 'all' || report.status === statusFilter;
-                                
-                                return matchesSearch && matchesStatus;
+                            progressBar.style.width = `${completionPercentage}%`;
+                            progressText.textContent = `${completionPercentage}% مكتمل (${completedTasks} من ${totalTasks} مهمة)`;
+                            
+                            currentTasks.forEach(task => {
+                                const taskElement = createTaskElement(task);
+                                tasksList.appendChild(taskElement);
                             });
-                            
-                            // عرض التقارير
-                            if (filteredReports.length > 0) {
-                                filteredReports.forEach(report => {
-                                    const reportElement = createInventoryReportElement(report);
-                                    inventoryTable.appendChild(reportElement);
-                                });
-                            } else {
-                                inventoryTable.innerHTML = '<tr><td colspan="9" class="text-center py-3 text-muted">لا توجد تقارير مطابقة لمعايير البحث</td></tr>';
-                            }
                         } else {
-                            inventoryTable.innerHTML = '<tr><td colspan="9" class="text-center py-3 text-muted">لا توجد تقارير مخزون</td></tr>';
+                            progressBar.style.width = '0%';
+                            progressText.textContent = '0% مكتمل (0 من 0 مهمة)';
+                            tasksList.innerHTML = '<div class="text-center py-3 text-muted">لا توجد مهام لهذا اليوم</div>';
                         }
                     })
                     .catch(error => {
-                        console.error('Error loading inventory reports:', error);
+                        console.error('Error loading tasks:', error);
                     });
             }
             
-            // إنشاء عنصر تقرير في واجهة المستخدم
-            function createInventoryReportElement(report) {
-                const client = clients.find(c => c.id === report.clientId);
-                const clientName = client ? client.name : 'غير معروف';
+            function loadNotes() {
+                const dateKey = formatDate(currentDate);
+                const userId = auth.currentUser?.uid;
                 
-                const difference = report.existingQuantity - report.deliveredQuantity;
-                const differenceText = difference > 0 ? 
-                    `<span class="text-success">+${difference}</span>` : 
-                    `<span class="text-danger">${difference}</span>`;
+                if (!userId) return;
                 
-                const statusTexts = {
-                    'corrected': '<span class="status-badge status-corrected">تم التصحيح</span>',
-                    'in-process': '<span class="status-badge status-in-process">قيد المعالجة</span>',
-                    'not-delivered': '<span class="status-badge status-not-delivered">لم تسلم</span>'
+                database.ref(`users/${userId}/notes/${dateKey}`).once('value')
+                    .then((snapshot) => {
+                        notesList.innerHTML = '';
+                        currentNotes = [];
+                        
+                        if (snapshot.exists()) {
+                            const notesData = snapshot.val();
+                            currentNotes = Object.entries(notesData).map(([id, note]) => ({ id, text: note }));
+                            
+                            currentNotes.forEach(note => {
+                                const noteElement = createNoteElement(note);
+                                notesList.appendChild(noteElement);
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading notes:', error);
+                    });
+            }
+            
+            function createTaskElement(task) {
+                const taskElement = document.createElement('div');
+                taskElement.className = 'task-item';
+                taskElement.dataset.id = task.id;
+                
+                const statusIcons = {
+                    'pending': 'far fa-clock',
+                    'in-progress': 'fas fa-spinner fa-pulse',
+                    'completed': 'fas fa-check-circle'
                 };
                 
-                const row = document.createElement('tr');
-                row.dataset.id = report.id;
+                const statusClasses = {
+                    'pending': 'status-pending',
+                    'in-progress': 'status-in-progress',
+                    'completed': 'status-completed'
+                };
                 
-                // تنسيق التاريخ
-                const date = new Date(report.createdAt);
-                const dateStr = date.toLocaleDateString('ar-EG');
+                const statusTexts = {
+                    'pending': 'قيد الإنتظار',
+                    'in-progress': 'قيد التنفيذ',
+                    'completed': 'مكتملة'
+                };
                 
-                row.innerHTML = `
-                    <td>${dateStr}</td>
-                    <td>${clientName}</td>
-                    <td>${report.deliveredQuantity}</td>
-                    <td>${report.existingQuantity}</td>
-                    <td>${differenceText}</td>
-                    <td>${report.employee}</td>
-                    <td>${statusTexts[report.status]}</td>
-                    <td>${report.notes || 'لا توجد ملاحظات'}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary edit-report">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                    </td>
+                taskElement.innerHTML = `
+                    <i class="${statusIcons[task.status]} text-${task.status === 'completed' ? 'success' : task.status === 'in-progress' ? 'primary' : 'warning'}"></i>
+                    <div class="task-text ${task.status === 'completed' ? 'text-decoration-line-through text-muted' : ''}">${task.text}</div>
+                    <span class="task-status ${statusClasses[task.status]}">${statusTexts[task.status]}</span>
+                    <div class="task-actions">
+                        <button class="btn btn-sm btn-outline-primary edit-task"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-sm btn-outline-danger delete-task"><i class="fas fa-trash"></i></button>
+                    </div>
                 `;
                 
-                row.querySelector('.edit-report').addEventListener('click', () => openEditInventoryModal(report));
+                taskElement.querySelector('.edit-task').addEventListener('click', () => openEditTaskModal(task));
+                taskElement.querySelector('.delete-task').addEventListener('click', () => deleteTask(task.id));
                 
-                return row;
+                taskElement.querySelector('.task-text').addEventListener('click', () => {
+                    toggleTaskStatus(task);
+                });
+                
+                return taskElement;
             }
             
-            // فتح نافذة تعديل التقرير
-            function openEditInventoryModal(report) {
-                currentReportId = report.id;
+            function createNoteElement(note) {
+                const noteElement = document.createElement('div');
+                noteElement.className = 'note-item';
+                noteElement.dataset.id = note.id;
                 
-                const client = clients.find(c => c.id === report.clientId);
-                const clientName = client ? client.name : 'غير معروف';
+                noteElement.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-start">
+                        <p class="mb-0">${note.text}</p>
+                        <button class="btn btn-sm btn-outline-danger delete-note"><i class="fas fa-times"></i></button>
+                    </div>
+                `;
                 
-                editInventoryClientInput.value = clientName;
-                editDeliveredQuantityInput.value = report.deliveredQuantity;
-                editExistingQuantityInput.value = report.existingQuantity;
-                editInventoryEmployeeInput.value = report.employee;
-                editInventoryStatusSelect.value = report.status;
-                editInventoryNotesInput.value = report.notes || '';
+                noteElement.querySelector('.delete-note').addEventListener('click', () => deleteNote(note.id));
                 
-                editInventoryModal.show();
+                return noteElement;
             }
             
-            // إضافة تقرير جديد
-            function addInventoryReport() {
-                const clientId = inventoryClientSelect.value;
-                const deliveredQuantity = parseInt(deliveredQuantityInput.value);
-                const existingQuantity = parseInt(existingQuantityInput.value);
-                const employee = inventoryEmployeeInput.value.trim();
-                const status = inventoryStatusSelect.value;
-                const notes = inventoryNotesInput.value.trim();
+            function openEditTaskModal(task) {
+                currentTaskId = task.id;
+                editTaskInput.value = task.text;
+                editTaskStatus.value = task.status;
+                editTaskModal.show();
+            }
+            
+            function toggleTaskStatus(task) {
+                const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+                updateTaskStatus(task.id, newStatus);
+            }
+            
+            function addTask() {
+                const taskText = newTaskInput.value.trim();
+                if (!taskText) return;
                 
-                if (!clientId || isNaN(deliveredQuantity) || isNaN(existingQuantity) || !employee) {
-                    alert('الرجاء ملء جميع الحقول المطلوبة');
-                    return;
-                }
-                
+                const dateKey = formatDate(currentDate);
                 const userId = auth.currentUser?.uid;
                 
                 if (!userId) return;
                 
-                const newReportRef = database.ref(`users/${userId}/inventory`).push();
-                newReportRef.set({
-                    clientId: clientId,
-                    deliveredQuantity: deliveredQuantity,
-                    existingQuantity: existingQuantity,
-                    employee: employee,
-                    status: status,
-                    notes: notes,
+                const newTaskRef = database.ref(`users/${userId}/tasks/${dateKey}`).push();
+                newTaskRef.set({
+                    text: taskText,
+                    status: 'pending',
                     createdAt: firebase.database.ServerValue.TIMESTAMP
                 })
                 .then(() => {
-                    // إعادة تعيين النموذج
-                    inventoryClientSelect.value = '';
-                    deliveredQuantityInput.value = '';
-                    existingQuantityInput.value = '';
-                    inventoryEmployeeInput.value = '';
-                    inventoryStatusSelect.value = 'corrected';
-                    inventoryNotesInput.value = '';
-                    
-                    addInventoryModal.hide();
-                    loadInventoryReports();
+                    newTaskInput.value = '';
+                    loadTasks();
                 })
                 .catch(error => {
-                    console.error('Error adding inventory report:', error);
+                    console.error('Error adding task:', error);
                 });
             }
             
-            // تحديث تقرير المخزون
-            function updateInventoryReport() {
-                const deliveredQuantity = parseInt(editDeliveredQuantityInput.value);
-                const existingQuantity = parseInt(editExistingQuantityInput.value);
-                const employee = editInventoryEmployeeInput.value.trim();
-                const status = editInventoryStatusSelect.value;
-                const notes = editInventoryNotesInput.value.trim();
+            function updateTask() {
+                const taskText = editTaskInput.value.trim();
+                const taskStatus = editTaskStatus.value;
                 
-                if (isNaN(deliveredQuantity) || isNaN(existingQuantity) || !employee || !currentReportId) {
-                    alert('الرجاء ملء جميع الحقول المطلوبة');
-                    return;
-                }
+                if (!taskText || !currentTaskId) return;
                 
+                const dateKey = formatDate(currentDate);
                 const userId = auth.currentUser?.uid;
                 
                 if (!userId) return;
                 
-                database.ref(`users/${userId}/inventory/${currentReportId}`).update({
-                    deliveredQuantity: deliveredQuantity,
-                    existingQuantity: existingQuantity,
-                    employee: employee,
-                    status: status,
-                    notes: notes
+                database.ref(`users/${userId}/tasks/${dateKey}/${currentTaskId}`).update({
+                    text: taskText,
+                    status: taskStatus
                 })
                 .then(() => {
-                    editInventoryModal.hide();
-                    loadInventoryReports();
+                    editTaskModal.hide();
+                    loadTasks();
                 })
                 .catch(error => {
-                    console.error('Error updating inventory report:', error);
+                    console.error('Error updating task:', error);
                 });
             }
             
-            // حذف تقرير المخزون
-            function deleteInventoryReport() {
-                if (!confirm('هل أنت متأكد من حذف هذا التقرير؟')) return;
-                
+            function updateTaskStatus(taskId, status) {
+                const dateKey = formatDate(currentDate);
                 const userId = auth.currentUser?.uid;
                 
-                if (!userId || !currentReportId) return;
+                if (!userId) return;
                 
-                database.ref(`users/${userId}/inventory/${currentReportId}`).remove()
+                database.ref(`users/${userId}/tasks/${dateKey}/${taskId}`).update({
+                    status: status
+                })
                 .then(() => {
-                    editInventoryModal.hide();
-                    loadInventoryReports();
+                    loadTasks();
                 })
                 .catch(error => {
-                    console.error('Error deleting inventory report:', error);
+                    console.error('Error updating task status:', error);
                 });
             }
             
-            // البحث عن تقارير المخزون
-            function searchInventory() {
-                loadInventoryReports();
+            function deleteTask(taskId) {
+                if (!confirm('هل أنت متأكد من حذف هذه المهمة؟')) return;
+                
+                const dateKey = formatDate(currentDate);
+                const userId = auth.currentUser?.uid;
+                
+                if (!userId) return;
+                
+                database.ref(`users/${userId}/tasks/${dateKey}/${taskId}`).remove()
+                .then(() => {
+                    loadTasks();
+                    if (currentTaskId === taskId) {
+                        editTaskModal.hide();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting task:', error);
+                });
+            }
+            
+            function addNote() {
+                const noteText = newNoteInput.value.trim();
+                if (!noteText) return;
+                
+                const dateKey = formatDate(currentDate);
+                const userId = auth.currentUser?.uid;
+                
+                if (!userId) return;
+                
+                const newNoteRef = database.ref(`users/${userId}/notes/${dateKey}`).push();
+                newNoteRef.set(noteText)
+                .then(() => {
+                    newNoteInput.value = '';
+                    loadNotes();
+                })
+                .catch(error => {
+                    console.error('Error adding note:', error);
+                });
+            }
+            
+            function deleteNote(noteId) {
+                if (!confirm('هل أنت متأكد من حذف هذه الملاحظة؟')) return;
+                
+                const dateKey = formatDate(currentDate);
+                const userId = auth.currentUser?.uid;
+                
+                if (!userId) return;
+                
+                database.ref(`users/${userId}/notes/${dateKey}/${noteId}`).remove()
+                .then(() => {
+                    loadNotes();
+                })
+                .catch(error => {
+                    console.error('Error deleting note:', error);
+                });
+            }
+            
+            function navigateDays(days) {
+                currentDate.setDate(currentDate.getDate() + days);
+                updateDateDisplay();
             }
             
             // أحداث المستخدم
-            saveInventoryBtn.addEventListener('click', addInventoryReport);
-            updateInventoryBtn.addEventListener('click', updateInventoryReport);
-            deleteInventoryBtn.addEventListener('click', deleteInventoryReport);
-            
-            searchInventoryBtn.addEventListener('click', searchInventory);
-            searchInventoryInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') searchInventory();
+            taskDateInput.addEventListener('change', () => {
+                const newDate = new Date(taskDateInput.value);
+                if (!isNaN(newDate.getTime())) {
+                    currentDate = newDate;
+                    updateDateDisplay();
+                }
             });
             
-            filterStatus.addEventListener('change', searchInventory);
+            addTaskBtn.addEventListener('click', addTask);
+            newTaskInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addTask();
+            });
+            
+            addNoteBtn.addEventListener('click', addNote);
+            newNoteInput.addEventListener('keypress', (e) => {
+                if (e.ctrlKey && e.key === 'Enter') addNote();
+            });
+            
+            prevDayBtn.addEventListener('click', () => navigateDays(-1));
+            nextDayBtn.addEventListener('click', () => navigateDays(1));
+            
+            saveTaskBtn.addEventListener('click', updateTask);
+            deleteTaskBtn.addEventListener('click', () => {
+                if (currentTaskId) {
+                    deleteTask(currentTaskId);
+                    editTaskModal.hide();
+                }
+            });
             
             // تهيئة الصفحة
-            loadClients();
+            updateDateDisplay();
         });
     </script>
 </body>
