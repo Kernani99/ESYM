@@ -10,15 +10,22 @@
     <style>
         :root {
             --primary-color: #e30613; /* اللون الأحمر لشركة SYM */
+            --primary-dark: #c00510;
             --secondary-color: #333;
             --light-color: #f8f9fa;
             --dark-color: #212529;
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --info-color: #17a2b8;
         }
 
         body {
             font-family: 'Cairo', sans-serif;
             background-color: #f5f5f5;
             color: var(--dark-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
         .navbar {
@@ -29,10 +36,19 @@
         .navbar-brand {
             font-weight: 700;
             font-size: 1.5rem;
+            display: flex;
+            align-items: center;
         }
 
         .nav-link {
             font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background-color: rgba(255, 255, 255, 0.2);
         }
 
         .card {
@@ -40,6 +56,11 @@
             border-radius: 10px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
         }
 
         .card-header {
@@ -47,6 +68,9 @@
             color: white;
             border-bottom: none;
             font-weight: 700;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .task-item {
@@ -59,15 +83,12 @@
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
             transition: all 0.3s ease;
             border-left: 4px solid var(--primary-color);
+            cursor: pointer;
         }
 
         .task-item:hover {
             transform: translateY(-3px);
             box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        .task-checkbox {
-            margin-left: 12px;
         }
 
         .task-text {
@@ -91,6 +112,8 @@
             font-size: 12px;
             font-weight: bold;
             margin-left: 10px;
+            min-width: 90px;
+            text-align: center;
         }
 
         .status-pending {
@@ -114,6 +137,12 @@
             padding: 12px;
             margin-bottom: 12px;
             border-radius: 0 8px 8px 0;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .note-item:hover {
+            background-color: #e9ecef;
         }
 
         .btn-primary {
@@ -122,8 +151,8 @@
         }
 
         .btn-primary:hover {
-            background-color: #c00510;
-            border-color: #c00510;
+            background-color: var(--primary-dark);
+            border-color: var(--primary-dark);
         }
 
         .btn-outline-primary {
@@ -134,6 +163,7 @@
         .btn-outline-primary:hover {
             background-color: var(--primary-color);
             border-color: var(--primary-color);
+            color: white;
         }
 
         .progress {
@@ -167,7 +197,20 @@
             background-color: var(--dark-color);
             color: white;
             padding: 20px 0;
-            margin-top: 40px;
+            margin-top: auto;
+        }
+
+        .date-navigation {
+            display: flex;
+            align-items: center;
+        }
+
+        .date-display {
+            background-color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin: 0 10px;
         }
 
         /* تعديلات RTL */
@@ -180,13 +223,77 @@
             margin-right: 0.5rem !important;
             margin-left: 0 !important;
         }
+
+        /* تحسينات للواجهة على الأجهزة الصغيرة */
+        @media (max-width: 768px) {
+            .navbar-brand {
+                font-size: 1.2rem;
+            }
+            
+            .task-item {
+                flex-wrap: wrap;
+                padding: 10px;
+            }
+            
+            .task-status {
+                margin: 5px 0;
+                width: 100%;
+            }
+            
+            .task-actions {
+                opacity: 1;
+                margin-top: 5px;
+            }
+        }
+
+        /* تأثيرات للتفاعل */
+        .btn {
+            transition: all 0.3s ease;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* تحسينات للواجهة */
+        .empty-state {
+            text-align: center;
+            padding: 30px;
+            color: #6c757d;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            color: #dee2e6;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 2rem;
+            height: 2rem;
+            vertical-align: text-bottom;
+            border: 0.25em solid currentColor;
+            border-right-color: transparent;
+            border-radius: 50%;
+            animation: spinner-border .75s linear infinite;
+        }
+
+        @keyframes spinner-border {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
             <a class="navbar-brand" href="index.html">
-                <img src="https://via.placeholder.com/150x50?text=SYM+Algeria" alt="SYM Algeria" class="logo">
+                <img src="https://www.nicepng.com/png/full/257-2577131_sym-south-africa-sym-logo-png.png" alt="SYM Algeria" class="logo">
                 نظام إدارة المهام
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -224,27 +331,31 @@
             <div class="col-lg-8 mx-auto">
                 <div class="card shadow">
                     <div class="card-header">
-                        <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap">
                             <h4 class="mb-0">
                                 <i class="fas fa-list-check me-2"></i>قائمة المهام اليومية
                             </h4>
-                            <div>
-                                <input type="date" id="taskDate" class="form-control">
-                                <button id="prevDayBtn" class="btn btn-sm btn-light ms-2"><i class="fas fa-arrow-right"></i></button>
-                                <button id="nextDayBtn" class="btn btn-sm btn-light"><i class="fas fa-arrow-left"></i></button>
+                            <div class="date-navigation mt-2 mt-md-0">
+                                <button id="prevDayBtn" class="btn btn-sm btn-light">
+                                    <i class="fas fa-arrow-right"></i> اليوم السابق
+                                </button>
+                                <div class="date-display" id="currentDateDisplay"></div>
+                                <button id="nextDayBtn" class="btn btn-sm btn-light">
+                                    اليوم التالي <i class="fas fa-arrow-left"></i>
+                                </button>
                             </div>
                         </div>
                     </div>
                     <div class="card-body">
                         <div class="input-group mb-4">
-                            <input type="text" id="newTaskInput" class="form-control" placeholder="أضف مهمة جديدة...">
+                            <input type="text" id="newTaskInput" class="form-control" placeholder="أضف مهمة جديدة..." autocomplete="off">
                             <button class="btn btn-primary" id="addTaskBtn">
                                 <i class="fas fa-plus me-1"></i> إضافة
                             </button>
                         </div>
                         
                         <div class="mb-4">
-                            <textarea id="newNoteInput" class="form-control" placeholder="أضف ملاحظة..." rows="3"></textarea>
+                            <textarea id="newNoteInput" class="form-control" placeholder="أضف ملاحظة..." rows="3" autocomplete="off"></textarea>
                             <button class="btn btn-secondary mt-2" id="addNoteBtn">
                                 <i class="fas fa-note-sticky me-1"></i> حفظ الملاحظة
                             </button>
@@ -252,11 +363,19 @@
                         
                         <div id="notesSection" class="mb-4 p-3 bg-light rounded">
                             <h5><i class="fas fa-notes me-2"></i>الملاحظات</h5>
-                            <div id="notesList"></div>
+                            <div id="notesList">
+                                <div class="text-center py-3">
+                                    <div class="loading-spinner text-primary"></div>
+                                    <p class="mt-2">جاري تحميل الملاحظات...</p>
+                                </div>
+                            </div>
                         </div>
                         
                         <div id="tasksList">
-                            <!-- المهام ستظهر هنا -->
+                            <div class="text-center py-3">
+                                <div class="loading-spinner text-primary"></div>
+                                <p class="mt-2">جاري تحميل المهام...</p>
+                            </div>
                         </div>
                         
                         <div class="mt-4">
@@ -280,7 +399,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <input type="text" id="editTaskInput" class="form-control mb-3">
+                    <input type="text" id="editTaskInput" class="form-control mb-3" autocomplete="off">
                     <select id="editTaskStatus" class="form-select">
                         <option value="pending">قيد الإنتظار</option>
                         <option value="in-progress">قيد التنفيذ</option>
@@ -298,7 +417,7 @@
 
     <footer class="footer">
         <div class="container text-center">
-            <p class="mb-0">جميع الحقوق محفوظة &copy; 2023 SYM Algeria</p>
+            <p class="mb-0">جميع الحقوق محفوظة &copy; <span id="currentYear"></span> SYM Algeria</p>
         </div>
     </footer>
 
@@ -309,13 +428,7 @@
     <script>
         // تهيئة Firebase
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            databaseURL: "YOUR_DATABASE_URL",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            databaseURL: "https://commercial-3ef19-default-rtdb.firebaseio.com/"
         };
 
         // Initialize Firebase
@@ -331,6 +444,7 @@
             })
             .catch((error) => {
                 console.error("خطأ في تسجيل الدخول:", error);
+                alert("حدث خطأ في الاتصال بالخادم. يرجى المحاولة لاحقًا.");
             });
 
         // تسجيل الخروج
@@ -342,7 +456,6 @@
 
         // كود المهام اليومية
         document.addEventListener('DOMContentLoaded', function() {
-            const taskDateInput = document.getElementById('taskDate');
             const newTaskInput = document.getElementById('newTaskInput');
             const addTaskBtn = document.getElementById('addTaskBtn');
             const tasksList = document.getElementById('tasksList');
@@ -353,6 +466,7 @@
             const nextDayBtn = document.getElementById('nextDayBtn');
             const progressBar = document.getElementById('progressBar');
             const progressText = document.getElementById('progressText');
+            const currentDateDisplay = document.getElementById('currentDateDisplay');
             
             const editTaskModal = new bootstrap.Modal(document.getElementById('editTaskModal'));
             const editTaskInput = document.getElementById('editTaskInput');
@@ -365,24 +479,44 @@
             let currentTasks = [];
             let currentNotes = [];
             
-            function formatDate(date) {
+            // تعيين سنة حقوق النشر
+            document.getElementById('currentYear').textContent = new Date().getFullYear();
+            
+            // تنسيق التاريخ لعرضه
+            function formatDisplayDate(date) {
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                return date.toLocaleDateString('ar-EG', options);
+            }
+            
+            // تنسيق التاريخ كمفتاح في قاعدة البيانات
+            function formatDatabaseDate(date) {
                 const year = date.getFullYear();
                 const month = String(date.getMonth() + 1).padStart(2, '0');
                 const day = String(date.getDate()).padStart(2, '0');
                 return `${year}-${month}-${day}`;
             }
             
+            // تحديث عرض التاريخ والبيانات
             function updateDateDisplay() {
-                taskDateInput.value = formatDate(currentDate);
+                currentDateDisplay.textContent = formatDisplayDate(currentDate);
                 loadTasks();
                 loadNotes();
             }
             
+            // تحميل المهام من Firebase
             function loadTasks() {
-                const dateKey = formatDate(currentDate);
+                const dateKey = formatDatabaseDate(currentDate);
                 const userId = auth.currentUser?.uid;
                 
                 if (!userId) return;
+                
+                // عرض حالة التحميل
+                tasksList.innerHTML = `
+                    <div class="text-center py-3">
+                        <div class="loading-spinner text-primary"></div>
+                        <p class="mt-2">جاري تحميل المهام...</p>
+                    </div>
+                `;
                 
                 database.ref(`users/${userId}/tasks/${dateKey}`).once('value')
                     .then((snapshot) => {
@@ -393,6 +527,7 @@
                             const tasksData = snapshot.val();
                             currentTasks = Object.entries(tasksData).map(([id, task]) => ({ id, ...task }));
                             
+                            // حساب نسبة الإنجاز
                             const completedTasks = currentTasks.filter(task => task.status === 'completed').length;
                             const totalTasks = currentTasks.length;
                             const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
@@ -400,23 +535,46 @@
                             progressBar.style.width = `${completionPercentage}%`;
                             progressText.textContent = `${completionPercentage}% مكتمل (${completedTasks} من ${totalTasks} مهمة)`;
                             
-                            currentTasks.forEach(task => {
-                                const taskElement = createTaskElement(task);
-                                tasksList.appendChild(taskElement);
-                            });
+                            // عرض المهام
+                            if (currentTasks.length > 0) {
+                                currentTasks.forEach(task => {
+                                    const taskElement = createTaskElement(task);
+                                    tasksList.appendChild(taskElement);
+                                });
+                            } else {
+                                showEmptyTasksState();
+                            }
                         } else {
                             progressBar.style.width = '0%';
                             progressText.textContent = '0% مكتمل (0 من 0 مهمة)';
-                            tasksList.innerHTML = '<div class="text-center py-3 text-muted">لا توجد مهام لهذا اليوم</div>';
+                            showEmptyTasksState();
                         }
                     })
                     .catch(error => {
                         console.error('Error loading tasks:', error);
+                        tasksList.innerHTML = `
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                حدث خطأ أثناء تحميل المهام. يرجى المحاولة مرة أخرى.
+                            </div>
+                        `;
                     });
             }
             
+            // عرض حالة عدم وجود مهام
+            function showEmptyTasksState() {
+                tasksList.innerHTML = `
+                    <div class="empty-state fade-in">
+                        <i class="fas fa-tasks"></i>
+                        <h5>لا توجد مهام لهذا اليوم</h5>
+                        <p class="text-muted">ابدأ بإضافة مهام جديدة باستخدام الحقل أعلاه</p>
+                    </div>
+                `;
+            }
+            
+            // تحميل الملاحظات من Firebase
             function loadNotes() {
-                const dateKey = formatDate(currentDate);
+                const dateKey = formatDatabaseDate(currentDate);
                 const userId = auth.currentUser?.uid;
                 
                 if (!userId) return;
@@ -430,26 +588,49 @@
                             const notesData = snapshot.val();
                             currentNotes = Object.entries(notesData).map(([id, note]) => ({ id, text: note }));
                             
-                            currentNotes.forEach(note => {
-                                const noteElement = createNoteElement(note);
-                                notesList.appendChild(noteElement);
-                            });
+                            if (currentNotes.length > 0) {
+                                currentNotes.forEach(note => {
+                                    const noteElement = createNoteElement(note);
+                                    notesList.appendChild(noteElement);
+                                });
+                            } else {
+                                showEmptyNotesState();
+                            }
+                        } else {
+                            showEmptyNotesState();
                         }
                     })
                     .catch(error => {
                         console.error('Error loading notes:', error);
+                        notesList.innerHTML = `
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                حدث خطأ أثناء تحميل الملاحظات. يرجى المحاولة مرة أخرى.
+                            </div>
+                        `;
                     });
             }
             
+            // عرض حالة عدم وجود ملاحظات
+            function showEmptyNotesState() {
+                notesList.innerHTML = `
+                    <div class="empty-state fade-in">
+                        <i class="fas fa-sticky-note"></i>
+                        <p class="text-muted">لا توجد ملاحظات لهذا اليوم</p>
+                    </div>
+                `;
+            }
+            
+            // إنشاء عنصر مهمة
             function createTaskElement(task) {
                 const taskElement = document.createElement('div');
-                taskElement.className = 'task-item';
+                taskElement.className = 'task-item fade-in';
                 taskElement.dataset.id = task.id;
                 
                 const statusIcons = {
-                    'pending': 'far fa-clock',
-                    'in-progress': 'fas fa-spinner fa-pulse',
-                    'completed': 'fas fa-check-circle'
+                    'pending': 'far fa-clock text-warning',
+                    'in-progress': 'fas fa-spinner fa-pulse text-primary',
+                    'completed': 'fas fa-check-circle text-success'
                 };
                 
                 const statusClasses = {
@@ -465,34 +646,42 @@
                 };
                 
                 taskElement.innerHTML = `
-                    <i class="${statusIcons[task.status]} text-${task.status === 'completed' ? 'success' : task.status === 'in-progress' ? 'primary' : 'warning'}"></i>
+                    <i class="${statusIcons[task.status]}"></i>
                     <div class="task-text ${task.status === 'completed' ? 'text-decoration-line-through text-muted' : ''}">${task.text}</div>
                     <span class="task-status ${statusClasses[task.status]}">${statusTexts[task.status]}</span>
                     <div class="task-actions">
-                        <button class="btn btn-sm btn-outline-primary edit-task"><i class="fas fa-edit"></i></button>
-                        <button class="btn btn-sm btn-outline-danger delete-task"><i class="fas fa-trash"></i></button>
+                        <button class="btn btn-sm btn-outline-primary edit-task" title="تعديل"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-sm btn-outline-danger delete-task" title="حذف"><i class="fas fa-trash"></i></button>
                     </div>
                 `;
                 
-                taskElement.querySelector('.edit-task').addEventListener('click', () => openEditTaskModal(task));
-                taskElement.querySelector('.delete-task').addEventListener('click', () => deleteTask(task.id));
+                taskElement.querySelector('.edit-task').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openEditTaskModal(task);
+                });
                 
-                taskElement.querySelector('.task-text').addEventListener('click', () => {
+                taskElement.querySelector('.delete-task').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteTask(task.id);
+                });
+                
+                taskElement.addEventListener('click', () => {
                     toggleTaskStatus(task);
                 });
                 
                 return taskElement;
             }
             
+            // إنشاء عنصر ملاحظة
             function createNoteElement(note) {
                 const noteElement = document.createElement('div');
-                noteElement.className = 'note-item';
+                noteElement.className = 'note-item fade-in';
                 noteElement.dataset.id = note.id;
                 
                 noteElement.innerHTML = `
                     <div class="d-flex justify-content-between align-items-start">
                         <p class="mb-0">${note.text}</p>
-                        <button class="btn btn-sm btn-outline-danger delete-note"><i class="fas fa-times"></i></button>
+                        <button class="btn btn-sm btn-outline-danger delete-note" title="حذف"><i class="fas fa-times"></i></button>
                     </div>
                 `;
                 
@@ -501,26 +690,37 @@
                 return noteElement;
             }
             
+            // فتح نافذة تعديل المهمة
             function openEditTaskModal(task) {
                 currentTaskId = task.id;
                 editTaskInput.value = task.text;
                 editTaskStatus.value = task.status;
                 editTaskModal.show();
+                editTaskInput.focus();
             }
             
+            // تبديل حالة المهمة
             function toggleTaskStatus(task) {
                 const newStatus = task.status === 'completed' ? 'pending' : 'completed';
                 updateTaskStatus(task.id, newStatus);
             }
             
+            // إضافة مهمة جديدة
             function addTask() {
                 const taskText = newTaskInput.value.trim();
-                if (!taskText) return;
+                if (!taskText) {
+                    newTaskInput.focus();
+                    return;
+                }
                 
-                const dateKey = formatDate(currentDate);
+                const dateKey = formatDatabaseDate(currentDate);
                 const userId = auth.currentUser?.uid;
                 
                 if (!userId) return;
+                
+                // تعطيل الزر أثناء الإضافة
+                addTaskBtn.disabled = true;
+                addTaskBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الإضافة...';
                 
                 const newTaskRef = database.ref(`users/${userId}/tasks/${dateKey}`).push();
                 newTaskRef.set({
@@ -530,23 +730,33 @@
                 })
                 .then(() => {
                     newTaskInput.value = '';
-                    loadTasks();
+                    newTaskInput.focus();
+                    addTaskBtn.disabled = false;
+                    addTaskBtn.innerHTML = '<i class="fas fa-plus me-1"></i> إضافة';
                 })
                 .catch(error => {
                     console.error('Error adding task:', error);
+                    alert('حدث خطأ أثناء إضافة المهمة. يرجى المحاولة مرة أخرى.');
+                    addTaskBtn.disabled = false;
+                    addTaskBtn.innerHTML = '<i class="fas fa-plus me-1"></i> إضافة';
                 });
             }
             
+            // تحديث المهمة
             function updateTask() {
                 const taskText = editTaskInput.value.trim();
                 const taskStatus = editTaskStatus.value;
                 
                 if (!taskText || !currentTaskId) return;
                 
-                const dateKey = formatDate(currentDate);
+                const dateKey = formatDatabaseDate(currentDate);
                 const userId = auth.currentUser?.uid;
                 
                 if (!userId) return;
+                
+                // تعطيل الزر أثناء التحديث
+                saveTaskBtn.disabled = true;
+                saveTaskBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الحفظ...';
                 
                 database.ref(`users/${userId}/tasks/${dateKey}/${currentTaskId}`).update({
                     text: taskText,
@@ -554,15 +764,20 @@
                 })
                 .then(() => {
                     editTaskModal.hide();
-                    loadTasks();
+                    saveTaskBtn.disabled = false;
+                    saveTaskBtn.innerHTML = 'حفظ التغييرات';
                 })
                 .catch(error => {
                     console.error('Error updating task:', error);
+                    alert('حدث خطأ أثناء تحديث المهمة. يرجى المحاولة مرة أخرى.');
+                    saveTaskBtn.disabled = false;
+                    saveTaskBtn.innerHTML = 'حفظ التغييرات';
                 });
             }
             
+            // تحديث حالة المهمة
             function updateTaskStatus(taskId, status) {
-                const dateKey = formatDate(currentDate);
+                const dateKey = formatDatabaseDate(currentDate);
                 const userId = auth.currentUser?.uid;
                 
                 if (!userId) return;
@@ -570,85 +785,88 @@
                 database.ref(`users/${userId}/tasks/${dateKey}/${taskId}`).update({
                     status: status
                 })
-                .then(() => {
-                    loadTasks();
-                })
                 .catch(error => {
                     console.error('Error updating task status:', error);
                 });
             }
             
+            // حذف المهمة
             function deleteTask(taskId) {
                 if (!confirm('هل أنت متأكد من حذف هذه المهمة؟')) return;
                 
-                const dateKey = formatDate(currentDate);
+                const dateKey = formatDatabaseDate(currentDate);
                 const userId = auth.currentUser?.uid;
                 
                 if (!userId) return;
                 
                 database.ref(`users/${userId}/tasks/${dateKey}/${taskId}`).remove()
                 .then(() => {
-                    loadTasks();
                     if (currentTaskId === taskId) {
                         editTaskModal.hide();
                     }
                 })
                 .catch(error => {
                     console.error('Error deleting task:', error);
+                    alert('حدث خطأ أثناء حذف المهمة. يرجى المحاولة مرة أخرى.');
                 });
             }
             
+            // إضافة ملاحظة جديدة
             function addNote() {
                 const noteText = newNoteInput.value.trim();
-                if (!noteText) return;
+                if (!noteText) {
+                    newNoteInput.focus();
+                    return;
+                }
                 
-                const dateKey = formatDate(currentDate);
+                const dateKey = formatDatabaseDate(currentDate);
                 const userId = auth.currentUser?.uid;
                 
                 if (!userId) return;
+                
+                // تعطيل الزر أثناء الإضافة
+                addNoteBtn.disabled = true;
+                addNoteBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> جاري الحفظ...';
                 
                 const newNoteRef = database.ref(`users/${userId}/notes/${dateKey}`).push();
                 newNoteRef.set(noteText)
                 .then(() => {
                     newNoteInput.value = '';
-                    loadNotes();
+                    newNoteInput.focus();
+                    addNoteBtn.disabled = false;
+                    addNoteBtn.innerHTML = '<i class="fas fa-note-sticky me-1"></i> حفظ الملاحظة';
                 })
                 .catch(error => {
                     console.error('Error adding note:', error);
+                    alert('حدث خطأ أثناء إضافة الملاحظة. يرجى المحاولة مرة أخرى.');
+                    addNoteBtn.disabled = false;
+                    addNoteBtn.innerHTML = '<i class="fas fa-note-sticky me-1"></i> حفظ الملاحظة';
                 });
             }
             
+            // حذف الملاحظة
             function deleteNote(noteId) {
                 if (!confirm('هل أنت متأكد من حذف هذه الملاحظة؟')) return;
                 
-                const dateKey = formatDate(currentDate);
+                const dateKey = formatDatabaseDate(currentDate);
                 const userId = auth.currentUser?.uid;
                 
                 if (!userId) return;
                 
                 database.ref(`users/${userId}/notes/${dateKey}/${noteId}`).remove()
-                .then(() => {
-                    loadNotes();
-                })
                 .catch(error => {
                     console.error('Error deleting note:', error);
+                    alert('حدث خطأ أثناء حذف الملاحظة. يرجى المحاولة مرة أخرى.');
                 });
             }
             
+            // التنقل بين الأيام
             function navigateDays(days) {
                 currentDate.setDate(currentDate.getDate() + days);
                 updateDateDisplay();
             }
             
             // أحداث المستخدم
-            taskDateInput.addEventListener('change', () => {
-                const newDate = new Date(taskDateInput.value);
-                if (!isNaN(newDate.getTime())) {
-                    currentDate = newDate;
-                    updateDateDisplay();
-                }
-            });
-            
             addTaskBtn.addEventListener('click', addTask);
             newTaskInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') addTask();
@@ -670,8 +888,20 @@
                 }
             });
             
+            // السماح بالتنقل بين الأيام باستخدام مفاتيح الأسهم
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowRight') {
+                    navigateDays(-1); // السابق لأننا في وضع RTL
+                } else if (e.key === 'ArrowLeft') {
+                    navigateDays(1); // التالي لأننا في وضع RTL
+                }
+            });
+            
             // تهيئة الصفحة
             updateDateDisplay();
+            
+            // التركيز على حقل إضافة المهمة عند تحميل الصفحة
+            newTaskInput.focus();
         });
     </script>
 </body>
