@@ -174,6 +174,11 @@
             color: white;
         }
 
+        .connecting {
+            background-color: var(--pending-color);
+            color: var(--dark-color);
+        }
+
         .connection-status i {
             margin-left: 5px;
         }
@@ -186,6 +191,22 @@
         [dir="rtl"] .ms-2 {
             margin-right: 0.5rem !important;
             margin-left: 0 !important;
+        }
+
+        /* تحسينات للعرض على الجوال */
+        @media (max-width: 768px) {
+            .table-responsive {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .connection-status {
+                bottom: 10px;
+                left: 10px;
+                right: 10px;
+                text-align: center;
+                justify-content: center;
+            }
         }
     </style>
 </head>
@@ -388,13 +409,13 @@
     </div>
 
     <!-- حالة الاتصال بقاعدة البيانات -->
-    <div id="connectionStatus" class="connection-status">
+    <div id="connectionStatus" class="connection-status connecting">
         <i class="fas fa-circle-notch fa-spin"></i> جاري الاتصال...
     </div>
 
     <footer class="footer">
         <div class="container text-center">
-            <p class="mb-0">جميع الحقوق محفوظة &copy; 2023 SYM Algeria</p>
+            <p class="mb-0">جميع الحقوق محفوظة &copy; <span id="currentYear"></span> SYM Algeria</p>
         </div>
     </footer>
 
@@ -406,17 +427,22 @@
         // حالة الاتصال
         const connectionStatus = document.getElementById('connectionStatus');
         
-        function updateConnectionStatus(connected) {
-            if (connected) {
-                connectionStatus.className = 'connection-status connected';
-                connectionStatus.innerHTML = '<i class="fas fa-check-circle"></i> متصل بقاعدة البيانات';
-                setTimeout(() => {
-                    connectionStatus.style.opacity = '0.7';
-                }, 3000);
-            } else {
-                connectionStatus.className = 'connection-status disconnected';
-                connectionStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> غير متصل بقاعدة البيانات';
-                connectionStatus.style.opacity = '1';
+        function updateConnectionStatus(status) {
+            connectionStatus.className = 'connection-status ' + status;
+            
+            switch(status) {
+                case 'connected':
+                    connectionStatus.innerHTML = '<i class="fas fa-check-circle"></i> متصل بقاعدة البيانات';
+                    setTimeout(() => { connectionStatus.style.opacity = '0.7'; }, 3000);
+                    break;
+                case 'disconnected':
+                    connectionStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> غير متصل بقاعدة البيانات';
+                    connectionStatus.style.opacity = '1';
+                    break;
+                case 'connecting':
+                    connectionStatus.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> جاري الاتصال...';
+                    connectionStatus.style.opacity = '1';
+                    break;
             }
         }
 
@@ -438,7 +464,7 @@
 
         // مراقبة حالة الاتصال
         database.ref('.info/connected').on('value', (snapshot) => {
-            updateConnectionStatus(snapshot.val() === true);
+            updateConnectionStatus(snapshot.val() ? 'connected' : 'disconnected');
         });
 
         // تسجيل الدخول
@@ -448,7 +474,7 @@
             })
             .catch((error) => {
                 console.error("خطأ في تسجيل الدخول:", error);
-                updateConnectionStatus(false);
+                updateConnectionStatus('disconnected');
             });
 
         // تسجيل الخروج
@@ -460,6 +486,9 @@
 
         // كود المواعيد الأسبوعية
         document.addEventListener('DOMContentLoaded', function() {
+            // تحديث سنة حقوق النشر
+            document.getElementById('currentYear').textContent = new Date().getFullYear();
+            
             const prevWeekBtn = document.getElementById('prevWeekBtn');
             const nextWeekBtn = document.getElementById('nextWeekBtn');
             const currentWeekRange = document.getElementById('currentWeekRange');
@@ -539,7 +568,12 @@
             function loadClients() {
                 const userId = auth.currentUser?.uid;
                 
-                if (!userId) return;
+                if (!userId) {
+                    console.error('User ID not available');
+                    return;
+                }
+                
+                updateConnectionStatus('connecting');
                 
                 database.ref(`commercial/clients/${userId}`).once('value')
                     .then((snapshot) => {
@@ -560,7 +594,7 @@
                     })
                     .catch(error => {
                         console.error('Error loading clients:', error);
-                        updateConnectionStatus(false);
+                        updateConnectionStatus('disconnected');
                     });
             }
             
@@ -568,6 +602,12 @@
             function showClientsList() {
                 const clientsTableBody = document.getElementById('clientsTableBody');
                 clientsTableBody.innerHTML = '';
+                
+                if (clients.length === 0) {
+                    clientsTableBody.innerHTML = '<tr><td colspan="5" class="text-center">لا يوجد زبائن مسجلين</td></tr>';
+                    clientsModal.show();
+                    return;
+                }
                 
                 clients.forEach(client => {
                     const row = document.createElement('tr');
@@ -616,7 +656,12 @@
                 const weekKey = getWeekKey(currentWeekStart);
                 const userId = auth.currentUser?.uid;
                 
-                if (!userId) return;
+                if (!userId) {
+                    console.error('User ID not available');
+                    return;
+                }
+                
+                updateConnectionStatus('connecting');
                 
                 database.ref(`commercial/appointments/${userId}/${weekKey}`).once('value')
                     .then((snapshot) => {
@@ -640,14 +685,14 @@
                             // عرض المواعيد في الجدول
                             clients.forEach(client => {
                                 if (appointmentsByClient[client.id] || searchClientInput.value === '' || 
-                                    client.name.includes(searchClientInput.value)) {
+                                    client.name.toLowerCase().includes(searchClientInput.value.toLowerCase())) {
                                     displayClientAppointments(client, appointmentsByClient[client.id] || {});
                                 }
                             });
                         } else {
                             // عرض الزبائن فقط إذا لم تكن هناك مواعيد
                             clients.forEach(client => {
-                                if (searchClientInput.value === '' || client.name.includes(searchClientInput.value)) {
+                                if (searchClientInput.value === '' || client.name.toLowerCase().includes(searchClientInput.value.toLowerCase())) {
                                     displayClientAppointments(client, {});
                                 }
                             });
@@ -655,7 +700,7 @@
                     })
                     .catch(error => {
                         console.error('Error loading appointments:', error);
-                        updateConnectionStatus(false);
+                        updateConnectionStatus('disconnected');
                     });
             }
             
@@ -771,7 +816,12 @@
                 
                 const userId = auth.currentUser?.uid;
                 
-                if (!userId) return;
+                if (!userId) {
+                    alert('يجب تسجيل الدخول أولاً');
+                    return;
+                }
+                
+                updateConnectionStatus('connecting');
                 
                 const newClientRef = database.ref(`commercial/clients/${userId}`).push();
                 newClientRef.set({
@@ -791,7 +841,8 @@
                 })
                 .catch(error => {
                     console.error('Error adding client:', error);
-                    updateConnectionStatus(false);
+                    alert('حدث خطأ أثناء حفظ الزبون');
+                    updateConnectionStatus('disconnected');
                 });
             }
             
@@ -808,7 +859,12 @@
                 const weekKey = getWeekKey(currentWeekStart);
                 const userId = auth.currentUser?.uid;
                 
-                if (!userId || !currentClientId || currentAppointmentDay === null) return;
+                if (!userId || !currentClientId || currentAppointmentDay === null) {
+                    alert('بيانات غير كافية لإضافة الموعد');
+                    return;
+                }
+                
+                updateConnectionStatus('connecting');
                 
                 const newAppointmentRef = database.ref(`commercial/appointments/${userId}/${weekKey}`).push();
                 newAppointmentRef.set({
@@ -824,7 +880,8 @@
                 })
                 .catch(error => {
                     console.error('Error adding appointment:', error);
-                    updateConnectionStatus(false);
+                    alert('حدث خطأ أثناء حفظ الموعد');
+                    updateConnectionStatus('disconnected');
                 });
             }
             
@@ -835,7 +892,12 @@
                 const weekKey = getWeekKey(currentWeekStart);
                 const userId = auth.currentUser?.uid;
                 
-                if (!userId) return;
+                if (!userId) {
+                    alert('يجب تسجيل الدخول أولاً');
+                    return;
+                }
+                
+                updateConnectionStatus('connecting');
                 
                 database.ref(`commercial/appointments/${userId}/${weekKey}/${appointmentId}`).remove()
                 .then(() => {
@@ -843,7 +905,8 @@
                 })
                 .catch(error => {
                     console.error('Error deleting appointment:', error);
-                    updateConnectionStatus(false);
+                    alert('حدث خطأ أثناء حذف الموعد');
+                    updateConnectionStatus('disconnected');
                 });
             }
             
