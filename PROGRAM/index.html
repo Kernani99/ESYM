@@ -9,10 +9,13 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #e30613; /* اللون الأحمر لشركة SYM */
+            --primary-color: #e30613;
             --secondary-color: #333;
             --light-color: #f8f9fa;
             --dark-color: #212529;
+            --delivered-color: #28a745;
+            --pending-color: #ffc107;
+            --not-delivered-color: #dc3545;
         }
 
         body {
@@ -122,7 +125,59 @@
             margin-top: 40px;
         }
 
-        /* تعديلات RTL */
+        /* حالة التوزيع */
+        .delivery-status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-left: 5px;
+        }
+
+        .delivered {
+            background-color: var(--delivered-color);
+            color: white;
+        }
+
+        .pending {
+            background-color: var(--pending-color);
+            color: var(--dark-color);
+        }
+
+        .not-delivered {
+            background-color: var(--not-delivered-color);
+            color: white;
+        }
+
+        /* حالة الاتصال */
+        .connection-status {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-weight: 600;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+        }
+
+        .connected {
+            background-color: var(--delivered-color);
+            color: white;
+        }
+
+        .disconnected {
+            background-color: var(--not-delivered-color);
+            color: white;
+        }
+
+        .connection-status i {
+            margin-left: 5px;
+        }
+
         [dir="rtl"] .me-2 {
             margin-left: 0.5rem !important;
             margin-right: 0 !important;
@@ -193,6 +248,9 @@
                                 <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addClientModal">
                                     <i class="fas fa-plus me-1"></i> إضافة زبون جديد
                                 </button>
+                                <button class="btn btn-outline-primary ms-2" id="showClientsBtn">
+                                    <i class="fas fa-users me-1"></i> عرض الزبائن
+                                </button>
                             </div>
                             <div class="col-md-6">
                                 <div class="input-group">
@@ -208,14 +266,12 @@
                             <table class="table table-bordered table-hover">
                                 <thead>
                                     <tr>
-                                        <th>الزبون</th>
-                                        <th>الأحد</th>
-                                        <th>الإثنين</th>
-                                        <th>الثلاثاء</th>
-                                        <th>الأربعاء</th>
-                                        <th>الخميس</th>
-                                        <th>الجمعة</th>
-                                        <th>السبت</th>
+                                        <th>الزبون / حالة التوزيع</th>
+                                        <th>الأحد<br><span class="date-display" data-day="0"></span></th>
+                                        <th>الإثنين<br><span class="date-display" data-day="1"></span></th>
+                                        <th>الثلاثاء<br><span class="date-display" data-day="2"></span></th>
+                                        <th>الأربعاء<br><span class="date-display" data-day="3"></span></th>
+                                        <th>الخميس<br><span class="date-display" data-day="4"></span></th>
                                     </tr>
                                 </thead>
                                 <tbody id="appointmentsTable">
@@ -240,7 +296,10 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label for="clientName" class="form-label">اسم الزبون</label>
-                        <input type="text" class="form-control" id="clientName" required>
+                        <input type="text" class="form-control" id="clientName" list="clientsList" required>
+                        <datalist id="clientsList">
+                            <!-- قائمة الزبائن ستظهر هنا -->
+                        </datalist>
                     </div>
                     <div class="mb-3">
                         <label for="clientPhone" class="form-label">رقم الهاتف</label>
@@ -250,10 +309,51 @@
                         <label for="clientAddress" class="form-label">العنوان</label>
                         <textarea class="form-control" id="clientAddress" rows="2"></textarea>
                     </div>
+                    <div class="mb-3">
+                        <label for="deliveryStatus" class="form-label">حالة التوزيع</label>
+                        <select class="form-select" id="deliveryStatus">
+                            <option value="delivered">تم التسليم</option>
+                            <option value="pending">مؤجلة</option>
+                            <option value="not-delivered">غير مسلم</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
                     <button type="button" id="saveClientBtn" class="btn btn-primary">حفظ الزبون</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة عرض الزبائن -->
+    <div class="modal fade" id="clientsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">قائمة الزبائن</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>اسم الزبون</th>
+                                    <th>رقم الهاتف</th>
+                                    <th>العنوان</th>
+                                    <th>حالة التوزيع</th>
+                                    <th>إجراءات</th>
+                                </tr>
+                            </thead>
+                            <tbody id="clientsTableBody">
+                                <!-- قائمة الزبائن ستظهر هنا -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
                 </div>
             </div>
         </div>
@@ -287,6 +387,11 @@
         </div>
     </div>
 
+    <!-- حالة الاتصال بقاعدة البيانات -->
+    <div id="connectionStatus" class="connection-status">
+        <i class="fas fa-circle-notch fa-spin"></i> جاري الاتصال...
+    </div>
+
     <footer class="footer">
         <div class="container text-center">
             <p class="mb-0">جميع الحقوق محفوظة &copy; 2023 SYM Algeria</p>
@@ -298,30 +403,52 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script>
+        // حالة الاتصال
+        const connectionStatus = document.getElementById('connectionStatus');
+        
+        function updateConnectionStatus(connected) {
+            if (connected) {
+                connectionStatus.className = 'connection-status connected';
+                connectionStatus.innerHTML = '<i class="fas fa-check-circle"></i> متصل بقاعدة البيانات';
+                setTimeout(() => {
+                    connectionStatus.style.opacity = '0.7';
+                }, 3000);
+            } else {
+                connectionStatus.className = 'connection-status disconnected';
+                connectionStatus.innerHTML = '<i class="fas fa-exclamation-circle"></i> غير متصل بقاعدة البيانات';
+                connectionStatus.style.opacity = '1';
+            }
+        }
+
         // تهيئة Firebase
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            databaseURL: "YOUR_DATABASE_URL",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyDvQvG6zYqjY7Q4X7Q6q3q3q3q3q3q3q3q",
+            authDomain: "commercial-3ef19.firebaseapp.com",
+            databaseURL: "https://commercial-3ef19-default-rtdb.firebaseio.com",
+            projectId: "commercial-3ef19",
+            storageBucket: "commercial-3ef19.appspot.com",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abcdef1234567890abcdef"
         };
 
         // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-
+        const app = firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         const auth = firebase.auth();
 
-        // تسجيل الدخول (يمكنك تغيير هذا لنظام تسجيل دخول حقيقي)
+        // مراقبة حالة الاتصال
+        database.ref('.info/connected').on('value', (snapshot) => {
+            updateConnectionStatus(snapshot.val() === true);
+        });
+
+        // تسجيل الدخول
         auth.signInAnonymously()
             .then(() => {
                 console.log("تم تسجيل الدخول كمستخدم مجهول");
             })
             .catch((error) => {
                 console.error("خطأ في تسجيل الدخول:", error);
+                updateConnectionStatus(false);
             });
 
         // تسجيل الخروج
@@ -342,12 +469,16 @@
             const clientNameInput = document.getElementById('clientName');
             const clientPhoneInput = document.getElementById('clientPhone');
             const clientAddressInput = document.getElementById('clientAddress');
+            const deliveryStatusInput = document.getElementById('deliveryStatus');
             const saveClientBtn = document.getElementById('saveClientBtn');
             const appointmentTimeInput = document.getElementById('appointmentTime');
             const appointmentDetailsInput = document.getElementById('appointmentDetails');
             const saveAppointmentBtn = document.getElementById('saveAppointmentBtn');
+            const showClientsBtn = document.getElementById('showClientsBtn');
+            const clientsList = document.getElementById('clientsList');
             
             const addClientModal = new bootstrap.Modal(document.getElementById('addClientModal'));
+            const clientsModal = new bootstrap.Modal(document.getElementById('clientsModal'));
             const addAppointmentModal = new bootstrap.Modal(document.getElementById('addAppointmentModal'));
             
             let currentWeekStart = getWeekStartDate(new Date());
@@ -366,14 +497,42 @@
             // تحديث عرض نطاق الأسبوع
             function updateWeekRangeDisplay() {
                 const weekEnd = new Date(currentWeekStart);
-                weekEnd.setDate(weekEnd.getDate() + 6);
+                weekEnd.setDate(weekEnd.getDate() + 4); // فقط 5 أيام عمل
                 
-                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-                const startStr = currentWeekStart.toLocaleDateString('ar-EG', options);
-                const endStr = weekEnd.toLocaleDateString('ar-EG', options);
+                // عرض التواريخ بالأرقام الأجنبية
+                const startStr = formatDate(currentWeekStart);
+                const endStr = formatDate(weekEnd);
                 
                 currentWeekRange.textContent = `${startStr} - ${endStr}`;
+                
+                // تحديث عرض التواريخ في الجدول
+                updateDateDisplays();
                 loadAppointments();
+            }
+            
+            // تنسيق التاريخ بالأرقام الأجنبية
+            function formatDate(date) {
+                const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس'];
+                const dayName = days[date.getDay()];
+                const day = date.getDate();
+                const month = date.getMonth() + 1;
+                const year = date.getFullYear();
+                return `${dayName} ${day}/${month}/${year}`;
+            }
+            
+            // تحديث عرض التواريخ في الجدول
+            function updateDateDisplays() {
+                const dateDisplays = document.querySelectorAll('.date-display');
+                dateDisplays.forEach(display => {
+                    const dayOffset = parseInt(display.dataset.day);
+                    const date = new Date(currentWeekStart);
+                    date.setDate(date.getDate() + dayOffset);
+                    
+                    // عرض التاريخ بالأرقام الأجنبية
+                    const day = date.getDate();
+                    const month = date.getMonth() + 1;
+                    display.textContent = `${day}/${month}`;
+                });
             }
             
             // تحميل الزبائن من Firebase
@@ -382,18 +541,74 @@
                 
                 if (!userId) return;
                 
-                database.ref(`users/${userId}/clients`).once('value')
+                database.ref(`commercial/clients/${userId}`).once('value')
                     .then((snapshot) => {
                         clients = [];
+                        clientsList.innerHTML = '';
                         
                         if (snapshot.exists()) {
                             const clientsData = snapshot.val();
                             clients = Object.entries(clientsData).map(([id, client]) => ({ id, ...client }));
+                            
+                            // تحديث قائمة الزبائن للاختيار منها
+                            clients.forEach(client => {
+                                const option = document.createElement('option');
+                                option.value = client.name;
+                                clientsList.appendChild(option);
+                            });
                         }
                     })
                     .catch(error => {
                         console.error('Error loading clients:', error);
+                        updateConnectionStatus(false);
                     });
+            }
+            
+            // عرض قائمة الزبائن في النافذة المنبثقة
+            function showClientsList() {
+                const clientsTableBody = document.getElementById('clientsTableBody');
+                clientsTableBody.innerHTML = '';
+                
+                clients.forEach(client => {
+                    const row = document.createElement('tr');
+                    
+                    // تحديد لون حالة التوزيع
+                    let statusClass = '';
+                    let statusText = '';
+                    switch(client.deliveryStatus) {
+                        case 'delivered':
+                            statusClass = 'delivered';
+                            statusText = 'تم التسليم';
+                            break;
+                        case 'pending':
+                            statusClass = 'pending';
+                            statusText = 'مؤجلة';
+                            break;
+                        case 'not-delivered':
+                            statusClass = 'not-delivered';
+                            statusText = 'غير مسلم';
+                            break;
+                        default:
+                            statusClass = 'pending';
+                            statusText = 'غير محدد';
+                    }
+                    
+                    row.innerHTML = `
+                        <td>${client.name}</td>
+                        <td>${client.phone || 'لا يوجد'}</td>
+                        <td>${client.address || 'لا يوجد'}</td>
+                        <td><span class="delivery-status ${statusClass}">${statusText}</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary edit-client" data-id="${client.id}">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                        </td>
+                    `;
+                    
+                    clientsTableBody.appendChild(row);
+                });
+                
+                clientsModal.show();
             }
             
             // تحميل المواعيد من Firebase
@@ -403,7 +618,7 @@
                 
                 if (!userId) return;
                 
-                database.ref(`users/${userId}/appointments/${weekKey}`).once('value')
+                database.ref(`commercial/appointments/${userId}/${weekKey}`).once('value')
                     .then((snapshot) => {
                         appointmentsTable.innerHTML = '';
                         appointments = [];
@@ -440,6 +655,7 @@
                     })
                     .catch(error => {
                         console.error('Error loading appointments:', error);
+                        updateConnectionStatus(false);
                     });
             }
             
@@ -454,18 +670,39 @@
             // عرض مواعيد الزبون في الجدول
             function displayClientAppointments(client, clientAppointments) {
                 const row = document.createElement('tr');
+                
+                // تحديد لون حالة التوزيع
+                let statusClass = '';
+                let statusText = '';
+                switch(client.deliveryStatus) {
+                    case 'delivered':
+                        statusClass = 'delivered';
+                        statusText = 'تم التسليم';
+                        break;
+                    case 'pending':
+                        statusClass = 'pending';
+                        statusText = 'مؤجلة';
+                        break;
+                    case 'not-delivered':
+                        statusClass = 'not-delivered';
+                        statusText = 'غير مسلم';
+                        break;
+                    default:
+                        statusClass = 'pending';
+                        statusText = 'غير محدد';
+                }
+                
                 row.innerHTML = `
                     <td>
                         <strong>${client.name}</strong>
                         <div class="text-muted small">${client.phone || 'لا يوجد رقم'} | ${client.address || 'لا يوجد عنوان'}</div>
+                        <span class="delivery-status ${statusClass}">${statusText}</span>
                     </td>
                     <td class="appointment-cell" data-day="0" data-client="${client.id}"></td>
                     <td class="appointment-cell" data-day="1" data-client="${client.id}"></td>
                     <td class="appointment-cell" data-day="2" data-client="${client.id}"></td>
                     <td class="appointment-cell" data-day="3" data-client="${client.id}"></td>
                     <td class="appointment-cell" data-day="4" data-client="${client.id}"></td>
-                    <td class="appointment-cell" data-day="5" data-client="${client.id}"></td>
-                    <td class="appointment-cell" data-day="6" data-client="${client.id}"></td>
                 `;
                 
                 // ملء المواعيد الموجودة
@@ -525,6 +762,7 @@
                 const name = clientNameInput.value.trim();
                 const phone = clientPhoneInput.value.trim();
                 const address = clientAddressInput.value.trim();
+                const deliveryStatus = deliveryStatusInput.value;
                 
                 if (!name) {
                     alert('اسم الزبون مطلوب');
@@ -535,11 +773,12 @@
                 
                 if (!userId) return;
                 
-                const newClientRef = database.ref(`users/${userId}/clients`).push();
+                const newClientRef = database.ref(`commercial/clients/${userId}`).push();
                 newClientRef.set({
                     name: name,
                     phone: phone,
                     address: address,
+                    deliveryStatus: deliveryStatus,
                     createdAt: firebase.database.ServerValue.TIMESTAMP
                 })
                 .then(() => {
@@ -552,6 +791,7 @@
                 })
                 .catch(error => {
                     console.error('Error adding client:', error);
+                    updateConnectionStatus(false);
                 });
             }
             
@@ -570,7 +810,7 @@
                 
                 if (!userId || !currentClientId || currentAppointmentDay === null) return;
                 
-                const newAppointmentRef = database.ref(`users/${userId}/appointments/${weekKey}`).push();
+                const newAppointmentRef = database.ref(`commercial/appointments/${userId}/${weekKey}`).push();
                 newAppointmentRef.set({
                     clientId: currentClientId,
                     day: currentAppointmentDay,
@@ -584,6 +824,7 @@
                 })
                 .catch(error => {
                     console.error('Error adding appointment:', error);
+                    updateConnectionStatus(false);
                 });
             }
             
@@ -596,12 +837,13 @@
                 
                 if (!userId) return;
                 
-                database.ref(`users/${userId}/appointments/${weekKey}/${appointmentId}`).remove()
+                database.ref(`commercial/appointments/${userId}/${weekKey}/${appointmentId}`).remove()
                 .then(() => {
                     loadAppointments();
                 })
                 .catch(error => {
                     console.error('Error deleting appointment:', error);
+                    updateConnectionStatus(false);
                 });
             }
             
@@ -627,6 +869,8 @@
             searchClientInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') searchClient();
             });
+            
+            showClientsBtn.addEventListener('click', showClientsList);
             
             // تهيئة الصفحة
             loadClients();
