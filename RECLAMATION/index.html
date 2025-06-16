@@ -11,27 +11,98 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        body {
+        * {
             font-family: 'Cairo', sans-serif;
+        }
+        body {
             transition: background-color 0.3s, color 0.3s ease;
             min-height: 100vh;
         }
         .dark-mode {
             background-color: #1a202c;
-            color: #e2e8f0;
+            color: #f8f9fa;
         }
-        .dark-mode .bg-white { background-color: #2d3748; }
-        .dark-mode .bg-gray-100 { background-color: #1a202c; }
-        .dark-mode .text-gray-700 { color: #e2e8f0; }
+        .dark-mode .bg-white { 
+            background-color: #2d3748;
+            color: #f8f9fa;
+        }
+        .dark-mode .bg-gray-100 { 
+            background-color: #1a202c;
+            color: #f8f9fa;
+        }
+        .dark-mode .text-gray-700, 
+        .dark-mode .text-gray-800 { 
+            color: #f8f9fa;
+        }
         .dark-mode .bg-blue-600 { background-color: #3182ce; }
         .dark-mode .bg-green-600 { background-color: #38a169; }
         .dark-mode .bg-yellow-600 { background-color: #d69e2e; }
         .dark-mode .bg-indigo-600 { background-color: #667eea; }
-        .positive { background-color: #d1fae5; color: #065f46; }
-        .negative { background-color: #fee2e2; color: #b91c1c; }
-        .under-review { background-color: #fef3c7; color: #92400e; }
-        .completed { background-color: #dbeafe; color: #1e40af; }
+        .dark-mode .positive { background-color: #2d4a3a; color: #d1fae5; }
+        .dark-mode .negative { background-color: #4a2d2d; color: #fee2e2; }
+        .dark-mode .under-review { background-color: #4a3d2d; color: #fef3c7; }
+        .dark-mode .completed { background-color: #2d3a4a; color: #dbeafe; }
+        .dark-mode .sidebar {
+            background-color: #2d3748;
+            color: #f8f9fa;
+        }
+        .dark-mode .sidebar-item:hover {
+            background-color: #4a5568;
+        }
+        .dark-mode .status-pending {
+            background-color: #4a2d2d;
+            color: #fecaca;
+        }
+        .dark-mode .status-completed {
+            background-color: #2d4a3a;
+            color: #d1fae5;
+        }
         .navbar { background-color: #1e3a8a; }
+        .sidebar {
+            width: 70px;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            right: 0;
+            background-color: #f8f9fa;
+            transition: width 0.3s;
+            z-index: 1000;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+        }
+        .sidebar:hover {
+            width: 200px;
+        }
+        .sidebar-item {
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+        .sidebar-item:hover {
+            background-color: #e9ecef;
+        }
+        .sidebar-item i {
+            margin-left: 10px;
+            font-size: 1.2rem;
+        }
+        .sidebar-text {
+            display: none;
+        }
+        .sidebar:hover .sidebar-text {
+            display: inline;
+        }
+        .main-content {
+            margin-right: 70px;
+            transition: margin-right 0.3s;
+            height: calc(100vh - 80px);
+            overflow-y: auto;
+        }
+        .sidebar:hover ~ .main-content {
+            margin-right: 200px;
+        }
         .search-input { transition: width 0.3s; }
         .search-input:focus { width: 300px; }
         .hidden { display: none; }
@@ -42,118 +113,198 @@
         .action-btn:hover {
             transform: translateY(-2px);
         }
+        .customer-group {
+            margin-bottom: 20px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .customer-header {
+            background-color: #4299e1;
+            color: white;
+            padding: 10px 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .customer-records {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .customer-records.expanded {
+            max-height: 5000px;
+        }
+        .overdue {
+            animation: pulse 2s infinite;
+        }
+        .status-pending {
+            background-color: #fee2e2;
+            color: #b91c1c;
+            padding: 4px 8px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+        }
+        .status-completed {
+            background-color: #d1fae5;
+            color: #065f46;
+            padding: 4px 8px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+        }
+        .status-icon {
+            margin-left: 4px;
+            font-size: 0.8rem;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+        }
+        .english-numbers {
+            font-family: Arial, sans-serif;
+        }
+        .records-container {
+            width: 100%;
+            overflow-x: auto;
+        }
+        .records-table {
+            width: 100%;
+            min-width: 1200px;
+        }
+        .container {
+            max-width: 100%;
+            padding: 0 15px;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
-    <!-- شريط التنقل -->
-    <nav class="navbar p-4 text-white shadow-lg">
-        <div class="container mx-auto flex justify-between items-center">
-            <div class="flex items-center space-x-2">
-                <img src="https://brandlogos.net/wp-content/uploads/2022/10/sym_-_sanyang_motor-logo_brandlogos.net_mre4v.png" alt="Logo" class="h-12 w-auto">
-                <span class="text-xl font-bold hidden md:block">نظام تسجيل البضائع الناقصة/الزائدة</span>
-            </div>
-            <div class="flex items-center space-x-4">
-                <button id="darkModeToggle" class="text-white hover:text-blue-300 p-2 rounded-full">
-                    <i class="fas fa-moon"></i>
-                </button>
-            </div>
+    <!-- الشريط الجانبي -->
+    <div class="sidebar">
+        <div class="sidebar-item" onclick="toggleSection('entryForm')">
+            <i class="fas fa-edit"></i>
+            <span class="sidebar-text">تسجيل البضائع</span>
         </div>
-    </nav>
+        <div class="sidebar-item" onclick="toggleSection('recordsTable')">
+            <i class="fas fa-table"></i>
+            <span class="sidebar-text">سجل البضائع</span>
+        </div>
+        <div class="sidebar-item" onclick="toggleDarkMode()">
+            <i class="fas fa-moon"></i>
+            <span class="sidebar-text">الوضع الليلي</span>
+        </div>
+    </div>
 
     <!-- المحتوى الرئيسي -->
-    <div class="container mx-auto p-6 max-w-6xl">
-        <!-- نموذج إدخال البيانات -->
-        <div class="bg-white p-6 rounded-lg shadow-lg mb-6">
-            <h2 class="text-xl font-semibold text-gray-700 mb-4">
-                <i class="fas fa-edit mr-2"></i> تسجيل البضائع الناقصة/الزائدة
-            </h2>
-            <form id="goodsForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                    <label for="date" class="block text-gray-700 mb-2">التاريخ</label>
-                    <input type="date" id="date" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                </div>
-                <div>
-                    <label for="customer" class="block text-gray-700 mb-2">الزبون</label>
-                    <select id="customer" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                        <option value="">جاري تحميل الزبائن...</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="itemCode" class="block text-gray-700 mb-2">كود السلعة</label>
-                    <input type="text" id="itemCode" placeholder="أدخل كود السلعة" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                </div>
-                <div>
-                    <label for="itemName" class="block text-gray-700 mb-2">اسم القطعة</label>
-                    <input type="text" id="itemName" placeholder="أدخل اسم القطعة" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                </div>
-                <div>
-                    <label for="deliveredQty" class="block text-gray-700 mb-2">الكمية المسلمة</label>
-                    <input type="number" id="deliveredQty" placeholder="أدخل الكمية المسلمة" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                </div>
-                <div>
-                    <label for="receivedQty" class="block text-gray-700 mb-2">الكمية المستلمة</label>
-                    <input type="number" id="receivedQty" placeholder="أدخل الكمية المستلمة" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                </div>
-                <div>
-                    <label for="warehouseManager" class="block text-gray-700 mb-2">المخزني المسؤول</label>
-                    <input type="text" id="warehouseManager" placeholder="اسم المخزني المسؤول" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                </div>
-                <div>
-                    <label for="status" class="block text-gray-700 mb-2">الحالة</label>
-                    <select id="status" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-                        <option value="قيد الدراسة">قيد الدراسة</option>
-                        <option value="تم الدراسة">تم الدراسة</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="difference" class="block text-gray-700 mb-2">الفرق</label>
-                    <input type="text" id="difference" readonly class="w-full p-3 border rounded bg-gray-100">
-                </div>
-                <div class="flex items-end md:col-span-2">
-                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white p-3 rounded transition">
-                        <i class="fas fa-save mr-2"></i> حفظ التسجيل
-                    </button>
-                </div>
-            </form>
-        </div>
-
-        <!-- جدول البيانات المسجلة -->
-        <div class="bg-white p-6 rounded-lg shadow-lg">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-semibold text-gray-700">
-                    <i class="fas fa-table mr-2"></i> سجل البضائع الناقصة/الزائدة
-                </h2>
+    <div class="main-content">
+        <!-- شريط التنقل -->
+        <nav class="navbar p-4 text-white shadow-lg">
+            <div class="container flex justify-between items-center">
                 <div class="flex items-center space-x-2">
-                    <input type="text" id="searchInput" placeholder="ابحث بكود السلعة أو الاسم..." class="p-2 border rounded search-input w-40 focus:w-64">
-                    <select id="statusFilter" class="p-2 border rounded">
-                        <option value="all">جميع الحالات</option>
-                        <option value="قيد الدراسة">قيد الدراسة</option>
-                        <option value="تم الدراسة">تم الدراسة</option>
-                    </select>
+                    <img src="https://brandlogos.net/wp-content/uploads/2022/10/sym_-_sanyang_motor-logo_brandlogos.net_mre4v.png" alt="Logo" class="h-12 w-auto">
+                    <span class="text-xl font-bold hidden md:block">نظام تسجيل البضائع الناقصة/الزائدة</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div id="currentDate" class="text-white english-numbers"></div>
                 </div>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full border-collapse">
-                    <thead>
-                        <tr class="bg-blue-600 text-white">
-                            <th class="p-3">التاريخ</th>
-                            <th class="p-3">الزبون</th>
-                            <th class="p-3">كود السلعة</th>
-                            <th class="p-3">اسم القطعة</th>
-                            <th class="p-3">المسلمة</th>
-                            <th class="p-3">المستلمة</th>
-                            <th class="p-3">الفرق</th>
-                            <th class="p-3">المخزني</th>
-                            <th class="p-3">الحالة</th>
-                            <th class="p-3">إجراءات</th>
-                        </tr>
-                    </thead>
-                    <tbody id="recordsTableBody">
-                        <tr>
-                            <td colspan="10" class="p-4 text-center text-gray-500">جاري تحميل البيانات...</td>
-                        </tr>
-                    </tbody>
-                </table>
+        </nav>
+
+        <!-- المحتوى الديناميكي -->
+        <div class="container p-6">
+            <!-- قسم تسجيل البيانات (مخفي افتراضيا) -->
+            <div id="entryForm" class="hidden">
+                <div class="bg-white p-6 rounded-lg shadow-lg mb-6">
+                    <h2 class="text-xl font-semibold text-gray-700 mb-4">
+                        <i class="fas fa-edit mr-2"></i> تسجيل البضائع الناقصة/الزائدة
+                    </h2>
+                    <form id="goodsForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                            <label for="date" class="block text-gray-700 mb-2">التاريخ</label>
+                            <input type="date" id="date" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 english-numbers" required>
+                        </div>
+                        <div>
+                            <label for="customer" class="block text-gray-700 mb-2">الزبون</label>
+                            <select id="customer" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                                <option value="">جاري تحميل الزبائن...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="commercialAgent" class="block text-gray-700 mb-2">العميل التجاري</label>
+                            <input type="text" id="commercialAgent" placeholder="أدخل اسم العميل التجاري" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label for="bcNumber" class="block text-gray-700 mb-2">رقم BC</label>
+                            <input type="text" id="bcNumber" placeholder="أدخل رقم BC" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 english-numbers">
+                        </div>
+                        <div>
+                            <label for="itemCode" class="block text-gray-700 mb-2">كود السلعة</label>
+                            <input type="text" id="itemCode" placeholder="أدخل كود السلعة" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 english-numbers" required>
+                        </div>
+                        <div>
+                            <label for="itemName" class="block text-gray-700 mb-2">اسم القطعة</label>
+                            <input type="text" id="itemName" placeholder="أدخل اسم القطعة" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        </div>
+                        <div>
+                            <label for="deliveredQty" class="block text-gray-700 mb-2">الكمية المسلمة</label>
+                            <input type="number" id="deliveredQty" placeholder="أدخل الكمية المسلمة" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 english-numbers" required>
+                        </div>
+                        <div>
+                            <label for="receivedQty" class="block text-gray-700 mb-2">الكمية المستلمة</label>
+                            <input type="number" id="receivedQty" placeholder="أدخل الكمية المستلمة" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 english-numbers" required>
+                        </div>
+                        <div>
+                            <label for="warehouseManager" class="block text-gray-700 mb-2">المخزني المسؤول</label>
+                            <input type="text" id="warehouseManager" placeholder="اسم المخزني المسؤول" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        </div>
+                        <div>
+                            <label for="status" class="block text-gray-700 mb-2">الحالة</label>
+                            <select id="status" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                                <option value="قيد الدراسة">قيد الدراسة</option>
+                                <option value="تم الدراسة">تم الدراسة</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="notes" class="block text-gray-700 mb-2">ملاحظات</label>
+                            <textarea id="notes" placeholder="أدخل أي ملاحظات" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                        </div>
+                        <div>
+                            <label for="difference" class="block text-gray-700 mb-2">الفرق</label>
+                            <input type="text" id="difference" readonly class="w-full p-3 border rounded bg-gray-100 english-numbers">
+                        </div>
+                        <div class="flex items-end md:col-span-2">
+                            <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white p-3 rounded transition">
+                                <i class="fas fa-save mr-2"></i> حفظ التسجيل
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- قسم سجل البضائع -->
+            <div id="recordsTable">
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-gray-700">
+                            <i class="fas fa-table mr-2"></i> سجل البضائع الناقصة/الزائدة
+                        </h2>
+                        <div class="flex items-center space-x-2">
+                            <input type="text" id="customerSearch" placeholder="ابحث باسم الزبون..." class="p-2 border rounded search-input w-40 focus:w-64">
+                            <input type="text" id="searchInput" placeholder="ابحث بكود السلعة أو الاسم..." class="p-2 border rounded search-input w-40 focus:w-64 english-numbers">
+                            <select id="statusFilter" class="p-2 border rounded">
+                                <option value="all">جميع الحالات</option>
+                                <option value="قيد الدراسة">قيد الدراسة</option>
+                                <option value="تم الدراسة">تم الدراسة</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="records-container">
+                        <div id="recordsContainer"></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -174,8 +325,15 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
+        // متغيرات عامة
+        let allRecords = [];
+        let customers = [];
+
         // تعيين التاريخ الافتراضي لليوم
         document.addEventListener('DOMContentLoaded', function() {
+            updateCurrentDate();
+            setInterval(updateCurrentDate, 60000); // تحديث التاريخ كل دقيقة
+            
             const today = new Date();
             const formattedDate = today.toISOString().split('T')[0];
             document.getElementById('date').value = formattedDate;
@@ -183,7 +341,7 @@
             // تفعيل الوضع الليلي إذا كان مفعلًا
             if (localStorage.getItem('darkMode') === 'true') {
                 document.body.classList.add('dark-mode');
-                document.getElementById('darkModeToggle').querySelector('i').classList.replace('fa-moon', 'fa-sun');
+                document.querySelector('.sidebar-item i.fa-moon').classList.replace('fa-moon', 'fa-sun');
             }
 
             // تحميل بيانات الزبائن تلقائيا
@@ -191,23 +349,52 @@
             
             // تحميل البيانات من Firebase
             loadRecords();
+            
+            // عرض قسم السجلات افتراضيا
+            document.getElementById('recordsTable').classList.remove('hidden');
+            
+            // التحقق من السجلات المتأخرة كل 5 دقائق
+            setInterval(checkOverdueRecords, 300000);
+            checkOverdueRecords();
         });
 
+        // تحديث التاريخ والوقت الحالي
+        function updateCurrentDate() {
+            const now = new Date();
+            const options = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            const dateString = now.toLocaleDateString('ar-EG', options);
+            // استبدال الأرقام العربية بأرقام إنجليزية
+            const englishDate = dateString.replace(/[٠-٩]/g, d => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
+            document.getElementById('currentDate').textContent = englishDate;
+        }
+
+        // تبديل الأقسام
+        function toggleSection(sectionId) {
+            document.getElementById('entryForm').classList.add('hidden');
+            document.getElementById('recordsTable').classList.add('hidden');
+            document.getElementById(sectionId).classList.remove('hidden');
+        }
+
         // تبديل الوضع الليلي
-        document.getElementById('darkModeToggle').addEventListener('click', function() {
+        function toggleDarkMode() {
             document.body.classList.toggle('dark-mode');
             localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
             
             // تغيير الأيقونة حسب الوضع
-            const icon = this.querySelector('i');
+            const icon = document.querySelector('.sidebar-item i.fa-moon, .sidebar-item i.fa-sun');
             if (document.body.classList.contains('dark-mode')) {
-                icon.classList.remove('fa-moon');
-                icon.classList.add('fa-sun');
+                icon.classList.replace('fa-moon', 'fa-sun');
             } else {
-                icon.classList.remove('fa-sun');
-                icon.classList.add('fa-moon');
+                icon.classList.replace('fa-sun', 'fa-moon');
             }
-        });
+        }
 
         // حساب الفرق بين الكميات
         document.getElementById('deliveredQty').addEventListener('input', calculateDifference);
@@ -222,11 +409,11 @@
             differenceField.value = difference;
             
             if (difference > 0) {
-                differenceField.className = 'w-full p-3 border rounded positive';
+                differenceField.className = 'w-full p-3 border rounded positive english-numbers';
             } else if (difference < 0) {
-                differenceField.className = 'w-full p-3 border rounded negative';
+                differenceField.className = 'w-full p-3 border rounded negative english-numbers';
             } else {
-                differenceField.className = 'w-full p-3 border rounded bg-gray-100';
+                differenceField.className = 'w-full p-3 border rounded bg-gray-100 english-numbers';
             }
         }
 
@@ -243,7 +430,7 @@
                 const csvData = await response.text();
                 
                 // تحويل CSV إلى JSON
-                const customers = parseCSV(csvData);
+                customers = parseCSV(csvData);
                 
                 if (customers.length === 0) {
                     throw new Error('لا توجد بيانات في الملف');
@@ -324,79 +511,177 @@
         // تحميل السجلات من Firebase
         function loadRecords() {
             database.ref('goodsRecords').on('value', (snapshot) => {
-                const records = snapshot.val() ? Object.values(snapshot.val()) : [];
-                renderRecords(records);
+                const recordsData = snapshot.val();
+                if (!recordsData) {
+                    allRecords = [];
+                    renderRecordsByCustomer([]);
+                    return;
+                }
+                
+                // تحويل البيانات إلى مصفوفة مع الحفاظ على المعرف
+                allRecords = Object.keys(recordsData).map(key => {
+                    return { ...recordsData[key], id: key };
+                });
+                
+                renderRecordsByCustomer(allRecords);
             });
         }
 
-        // عرض البيانات في الجدول
-        function renderRecords(records) {
+        // عرض البيانات مجمعة حسب الزبون
+        function renderRecordsByCustomer(records) {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const customerSearchTerm = document.getElementById('customerSearch').value.toLowerCase();
             const statusFilter = document.getElementById('statusFilter').value;
-            const tbody = document.getElementById('recordsTableBody');
-            tbody.innerHTML = '';
             
+            // تصفية السجلات حسب البحث والتصفية
             const filteredRecords = records
                 .filter(record => {
                     const matchesSearch = 
-                        record.itemCode.toLowerCase().includes(searchTerm) || 
-                        record.itemName.toLowerCase().includes(searchTerm);
+                        (record.itemCode && record.itemCode.toString().toLowerCase().includes(searchTerm)) || 
+                        (record.itemName && record.itemName.toLowerCase().includes(searchTerm));
+                    
+                    const matchesCustomer = 
+                        record.customer && record.customer.toLowerCase().includes(customerSearchTerm);
                     
                     const matchesStatus = 
                         statusFilter === 'all' || 
                         record.status === statusFilter;
                     
-                    return matchesSearch && matchesStatus;
+                    return matchesSearch && matchesCustomer && matchesStatus;
                 })
                 .sort((a, b) => new Date(b.date) - new Date(a.date)); // أحدث المدخلات أولاً
             
-            if (filteredRecords.length === 0) {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td colspan="10" class="p-4 text-center text-gray-500">
+            // تجميع السجلات حسب الزبون
+            const groupedRecords = {};
+            filteredRecords.forEach(record => {
+                if (!groupedRecords[record.customer]) {
+                    groupedRecords[record.customer] = [];
+                }
+                groupedRecords[record.customer].push(record);
+            });
+            
+            // عرض البيانات المجمعة
+            const container = document.getElementById('recordsContainer');
+            container.innerHTML = '';
+            
+            if (Object.keys(groupedRecords).length === 0) {
+                container.innerHTML = `
+                    <div class="text-center p-4 text-gray-500">
                         لا توجد سجلات متاحة
-                    </td>
+                    </div>
                 `;
-                tbody.appendChild(tr);
                 return;
             }
             
-            filteredRecords.forEach((record, index) => {
-                const tr = document.createElement('tr');
-                if (index % 2 === 0) tr.classList.add('bg-gray-50');
+            for (const customer in groupedRecords) {
+                const customerGroup = document.createElement('div');
+                customerGroup.className = 'customer-group mb-6';
                 
-                const difference = record.receivedQty - record.deliveredQty;
-                let differenceClass = 'px-2 py-1 rounded-full text-xs';
+                const customerHeader = document.createElement('div');
+                customerHeader.className = 'customer-header';
+                customerHeader.innerHTML = `
+                    <span>${customer}</span>
+                    <i class="fas fa-chevron-down"></i>
+                `;
                 
-                if (difference > 0) {
-                    differenceClass += ' bg-green-100 text-green-800';
-                } else if (difference < 0) {
-                    differenceClass += ' bg-red-100 text-red-800';
-                } else {
-                    differenceClass += ' bg-gray-100 text-gray-800';
-                }
+                const customerRecordsDiv = document.createElement('div');
+                customerRecordsDiv.className = 'customer-records';
                 
-                let statusClass = 'px-2 py-1 rounded-full text-xs';
-                if (record.status === 'قيد الدراسة') {
-                    statusClass += ' under-review';
-                } else {
-                    statusClass += ' completed';
-                }
+                const table = document.createElement('table');
+                table.className = 'records-table w-full border-collapse';
+                table.innerHTML = `
+                    <thead>
+                        <tr class="bg-blue-600 text-white">
+                            <th class="p-3">التاريخ</th>
+                            <th class="p-3">العميل التجاري</th>
+                            <th class="p-3">رقم BC</th>
+                            <th class="p-3">كود السلعة</th>
+                            <th class="p-3">اسم القطعة</th>
+                            <th class="p-3">المسلمة</th>
+                            <th class="p-3">المستلمة</th>
+                            <th class="p-3">الفرق</th>
+                            <th class="p-3">المخزني</th>
+                            <th class="p-3">الحالة</th>
+                            <th class="p-3">ملاحظات</th>
+                            <th class="p-3">آخر تعديل</th>
+                            <th class="p-3">إجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${groupedRecords[customer].map(record => createRecordRow(record)).join('')}
+                    </tbody>
+                `;
                 
-                tr.innerHTML = `
-                    <td class="p-3">${record.date}</td>
-                    <td class="p-3">${record.customer}</td>
-                    <td class="p-3">${record.itemCode}</td>
+                customerRecordsDiv.appendChild(table);
+                customerGroup.appendChild(customerHeader);
+                customerGroup.appendChild(customerRecordsDiv);
+                container.appendChild(customerGroup);
+                
+                // إضافة حدث النقر لفتح/إغلاق مجموعة الزبون
+                customerHeader.addEventListener('click', () => {
+                    customerRecordsDiv.classList.toggle('expanded');
+                    const icon = customerHeader.querySelector('i');
+                    icon.classList.toggle('fa-chevron-down');
+                    icon.classList.toggle('fa-chevron-up');
+                });
+            }
+        }
+
+        // إنشاء صف للسجل
+        function createRecordRow(record) {
+            const difference = record.receivedQty - record.deliveredQty;
+            let differenceClass = 'px-2 py-1 rounded-full text-xs english-numbers';
+            
+            if (difference > 0) {
+                differenceClass += ' bg-green-100 text-green-800';
+            } else if (difference < 0) {
+                differenceClass += ' bg-red-100 text-red-800';
+            } else {
+                differenceClass += ' bg-gray-100 text-gray-800';
+            }
+            
+            // التحقق من انتهاء المدة (أكثر من شهر)
+            const recordDate = new Date(record.date);
+            const today = new Date();
+            const oneMonthAgo = new Date(today.setMonth(today.getMonth() - 1));
+            const isOverdue = record.status === 'قيد الدراسة' && recordDate < oneMonthAgo;
+            
+            // إنشاء عنصر الحالة مع الأيقونة
+            let statusElement;
+            if (record.status === 'قيد الدراسة') {
+                statusElement = `
+                    <span class="status-pending">
+                        ${record.status}
+                        <i class="fas fa-hourglass-half status-icon"></i>
+                    </span>
+                `;
+            } else {
+                statusElement = `
+                    <span class="status-completed">
+                        ${record.status}
+                        <i class="fas fa-check-circle status-icon"></i>
+                    </span>
+                `;
+            }
+            
+            return `
+                <tr class="${isOverdue ? 'overdue bg-red-50' : ''}">
+                    <td class="p-3 english-numbers">${record.date}</td>
+                    <td class="p-3">${record.commercialAgent || '-'}</td>
+                    <td class="p-3 english-numbers">${record.bcNumber || '-'}</td>
+                    <td class="p-3 english-numbers">${record.itemCode}</td>
                     <td class="p-3">${record.itemName}</td>
-                    <td class="p-3 text-center">${record.deliveredQty}</td>
-                    <td class="p-3 text-center">${record.receivedQty}</td>
+                    <td class="p-3 text-center english-numbers">${record.deliveredQty}</td>
+                    <td class="p-3 text-center english-numbers">${record.receivedQty}</td>
                     <td class="p-3 text-center">
                         <span class="${differenceClass}">${difference}</span>
                     </td>
                     <td class="p-3">${record.warehouseManager}</td>
                     <td class="p-3 text-center">
-                        <span class="${statusClass}">${record.status}</span>
+                        ${statusElement}
                     </td>
+                    <td class="p-3">${record.notes || '-'}</td>
+                    <td class="p-3 english-numbers">${record.lastModified ? record.lastModified.date + '<br>' + (record.lastModified.note || 'بدون ملاحظات') : '-'}</td>
                     <td class="p-3">
                         <button onclick="editRecord('${record.id}')" class="action-btn text-blue-600 hover:text-blue-800 mr-2">
                             <i class="fas fa-edit"></i>
@@ -405,9 +690,29 @@
                             <i class="fas fa-trash"></i>
                         </button>
                     </td>
-                `;
-                tbody.appendChild(tr);
+                </tr>
+            `;
+        }
+
+        // التحقق من السجلات المتأخرة
+        function checkOverdueRecords() {
+            const today = new Date();
+            const oneMonthAgo = new Date(today.setMonth(today.getMonth() - 1));
+            
+            const overdueRecords = allRecords.filter(record => {
+                const recordDate = new Date(record.date);
+                return record.status === 'قيد الدراسة' && recordDate < oneMonthAgo;
             });
+            
+            if (overdueRecords.length > 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'تنبيه',
+                    html: `هناك ${overdueRecords.length} سجل(سجلات) في حالة "قيد الدراسة" لأكثر من شهر. <br> يرجى مراجعتها وتحديث حالتها.`,
+                    confirmButtonText: 'حسناً',
+                    timer: 10000
+                });
+            }
         }
 
         // إضافة سجل جديد إلى Firebase
@@ -418,13 +723,17 @@
                 id: Date.now().toString(),
                 date: document.getElementById('date').value,
                 customer: document.getElementById('customer').value,
+                commercialAgent: document.getElementById('commercialAgent').value,
+                bcNumber: document.getElementById('bcNumber').value,
                 itemCode: document.getElementById('itemCode').value,
                 itemName: document.getElementById('itemName').value,
                 deliveredQty: parseFloat(document.getElementById('deliveredQty').value),
                 receivedQty: parseFloat(document.getElementById('receivedQty').value),
                 warehouseManager: document.getElementById('warehouseManager').value,
                 status: document.getElementById('status').value,
-                difference: parseFloat(document.getElementById('difference').value) || 0
+                notes: document.getElementById('notes').value,
+                difference: parseFloat(document.getElementById('difference').value) || 0,
+                createdAt: new Date().toISOString()
             };
             
             // إضافة السجل إلى Firebase
@@ -434,7 +743,7 @@
                     this.reset();
                     document.getElementById('date').value = new Date().toISOString().split('T')[0];
                     document.getElementById('difference').value = '';
-                    document.getElementById('difference').className = 'w-full p-3 border rounded bg-gray-100';
+                    document.getElementById('difference').className = 'w-full p-3 border rounded bg-gray-100 english-numbers';
                     
                     Swal.fire({
                         icon: 'success',
@@ -463,38 +772,49 @@
                     Swal.fire({
                         title: 'تعديل السجل',
                         html: `
-                            <input type="date" id="editDate" class="swal2-input" value="${record.date}">
+                            <input type="date" id="editDate" class="swal2-input english-numbers" value="${record.date}">
                             <select id="editCustomer" class="swal2-select">
-                                <option value="${record.customer}">${record.customer}</option>
+                                ${customers.map(c => `<option value="${c}" ${c === record.customer ? 'selected' : ''}>${c}</option>`).join('')}
                             </select>
-                            <input type="text" id="editItemCode" class="swal2-input" value="${record.itemCode}" placeholder="كود السلعة">
+                            <input type="text" id="editCommercialAgent" class="swal2-input" value="${record.commercialAgent || ''}" placeholder="العميل التجاري">
+                            <input type="text" id="editBcNumber" class="swal2-input english-numbers" value="${record.bcNumber || ''}" placeholder="رقم BC">
+                            <input type="text" id="editItemCode" class="swal2-input english-numbers" value="${record.itemCode}" placeholder="كود السلعة">
                             <input type="text" id="editItemName" class="swal2-input" value="${record.itemName}" placeholder="اسم القطعة">
-                            <input type="number" id="editDeliveredQty" class="swal2-input" value="${record.deliveredQty}" placeholder="الكمية المسلمة">
-                            <input type="number" id="editReceivedQty" class="swal2-input" value="${record.receivedQty}" placeholder="الكمية المستلمة">
+                            <input type="number" id="editDeliveredQty" class="swal2-input english-numbers" value="${record.deliveredQty}" placeholder="الكمية المسلمة">
+                            <input type="number" id="editReceivedQty" class="swal2-input english-numbers" value="${record.receivedQty}" placeholder="الكمية المستلمة">
                             <input type="text" id="editWarehouseManager" class="swal2-input" value="${record.warehouseManager}" placeholder="المخزني المسؤول">
                             <select id="editStatus" class="swal2-select">
                                 <option value="قيد الدراسة" ${record.status === 'قيد الدراسة' ? 'selected' : ''}>قيد الدراسة</option>
                                 <option value="تم الدراسة" ${record.status === 'تم الدراسة' ? 'selected' : ''}>تم الدراسة</option>
                             </select>
+                            <textarea id="editNotes" class="swal2-textarea" placeholder="ملاحظات">${record.notes || ''}</textarea>
+                            <input type="text" id="editModificationNote" class="swal2-input" placeholder="ملاحظة التعديل">
                         `,
                         showCancelButton: true,
                         confirmButtonText: 'حفظ التعديلات',
                         cancelButtonText: 'إلغاء',
                         preConfirm: () => {
                             const updatedRecord = {
-                                id: record.id,
+                                ...record,
                                 date: document.getElementById('editDate').value,
                                 customer: document.getElementById('editCustomer').value,
+                                commercialAgent: document.getElementById('editCommercialAgent').value,
+                                bcNumber: document.getElementById('editBcNumber').value,
                                 itemCode: document.getElementById('editItemCode').value,
                                 itemName: document.getElementById('editItemName').value,
                                 deliveredQty: parseFloat(document.getElementById('editDeliveredQty').value),
                                 receivedQty: parseFloat(document.getElementById('editReceivedQty').value),
                                 warehouseManager: document.getElementById('editWarehouseManager').value,
                                 status: document.getElementById('editStatus').value,
-                                difference: parseFloat(document.getElementById('editReceivedQty').value) - parseFloat(document.getElementById('editDeliveredQty').value)
+                                notes: document.getElementById('editNotes').value,
+                                difference: parseFloat(document.getElementById('editReceivedQty').value) - parseFloat(document.getElementById('editDeliveredQty').value),
+                                lastModified: {
+                                    date: new Date().toISOString().split('T')[0],
+                                    note: document.getElementById('editModificationNote').value || 'تم التعديل بدون ملاحظات'
+                                }
                             };
                             
-                            return database.ref('goodsRecords/' + record.id).update(updatedRecord)
+                            return database.ref('goodsRecords/' + id).update(updatedRecord)
                                 .then(() => {
                                     Swal.fire('تم التعديل!', 'تم تحديث السجل بنجاح.', 'success');
                                 })
@@ -531,17 +851,15 @@
 
         // البحث والتصفية
         document.getElementById('searchInput').addEventListener('input', () => {
-            database.ref('goodsRecords').once('value').then(snapshot => {
-                const records = snapshot.val() ? Object.values(snapshot.val()) : [];
-                renderRecords(records);
-            });
+            renderRecordsByCustomer(allRecords);
+        });
+
+        document.getElementById('customerSearch').addEventListener('input', () => {
+            renderRecordsByCustomer(allRecords);
         });
 
         document.getElementById('statusFilter').addEventListener('change', () => {
-            database.ref('goodsRecords').once('value').then(snapshot => {
-                const records = snapshot.val() ? Object.values(snapshot.val()) : [];
-                renderRecords(records);
-            });
+            renderRecordsByCustomer(allRecords);
         });
     </script>
 </body>
