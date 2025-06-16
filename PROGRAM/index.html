@@ -154,11 +154,18 @@
                 return;
             }
 
-            // Display loading indicator
-            document.getElementById('appointmentsGrid').innerHTML = `<div class="col-span-full text-center p-4 text-gray-500 flex items-center justify-center">
-                <i class="fas fa-spinner fa-spin ml-2"></i> Loading appointments...
-            </div>`;
-
+            // Display loading indicator for each day's list initially
+            // This loop ensures each day's list gets a loading message.
+            daysOfWeek.forEach(day => {
+                const dayList = document.getElementById(`${day}List`);
+                if (dayList) {
+                    dayList.innerHTML = `<div class="text-center p-4 text-gray-500 flex items-center justify-center">
+                        <i class="fas fa-spinner fa-spin ml-2"></i> Loading...
+                    </div>`;
+                }
+            });
+            
+            // The onSnapshot listener now correctly observes the collection and triggers renderAppointments
             onSnapshot(query(appointmentsCollectionRef), (snapshot) => {
                 customerAppointments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 renderAppointments(); // Render based on the current filtered week
@@ -764,7 +771,8 @@
             align-items: center;
             font-size: 0.875rem; /* text-sm */
             font-weight: 500; /* Medium weight */
-            color: var(--text-color-dark); /* Ensure it's visible in nav */
+            color: white; /* Make text white for visibility in primary-color navbar */
+            margin-top: 0.25rem; /* Equivalent to mt-1 */
         }
         .connection-dot {
             width: 10px;
@@ -773,11 +781,12 @@
             margin-left: 8px; /* space-x-2 equivalent */
             transition: background-color 0.3s ease;
         }
-        .text-yellow-500 { color: #f59e0b; }
+        /* Specific colors for dot and text within navbar */
+        .text-yellow-500 { color: #f59e0b; } /* Not directly used for text in nav now, but good to keep */
         .bg-yellow-500 { background-color: #f59e0b; }
-        .text-green-500 { color: #10b981; }
+        .text-green-500 { color: #10b981; } /* Not directly used for text in nav now, but good to keep */
         .bg-green-500 { background-color: #10b981; }
-        .text-red-500 { color: #ef4444; }
+        .text-red-500 { color: #ef4444; } /* Not directly used for text in nav now, but good to keep */
         .bg-red-500 { background-color: #ef4444; }
     </style>
 </head>
@@ -821,9 +830,10 @@
                 </div>
                 <div class="flex flex-col items-end">
                     <span id="userIdDisplay" class="text-white text-xs md:text-sm mt-1"></span>
-                    <div class="connection-status text-xs md:text-sm mt-1">
-                        <div id="connectionStatusDot" class="connection-dot"></div>
-                        <span id="connectionStatusText" class="font-medium">Connecting...</span>
+                    <!-- Professional Connection Status Indicator -->
+                    <div class="connection-status">
+                        <div id="connectionStatusDot" class="connection-dot bg-yellow-500"></div>
+                        <span id="connectionStatusText" class="font-medium text-white">Connecting...</span>
                     </div>
                 </div>
             </div>
@@ -854,14 +864,17 @@
                 <div class="day-card">
                     <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200">Sunday</h3>
                     <div class="flex flex-col gap-3">
-                        <input type="text" id="SundayCustomerName" placeholder="اسم الزبون" class="p-2 border rounded">
+                        <input type="text" id="SundayCustomerName" placeholder="Customer Name" class="p-2 border rounded">
                         <input type="time" id="SundayAppointmentTime" class="p-2 border rounded">
                         <button onclick="addCustomerAppointment('Sunday')" class="add-appointment-btn">
-                            <i class="fas fa-plus ml-2"></i> إضافة موعد
+                            <i class="fas fa-plus ml-2"></i> Add Appointment
                         </button>
                     </div>
                     <div id="SundayList" class="mt-4 space-y-2 flex-grow">
-                        <!-- المواعيد ستظهر هنا -->
+                        <!-- Mواعيد ستظهر هنا -->
+                        <div class="text-center p-4 text-gray-500 flex items-center justify-center">
+                            <i class="fas fa-spinner fa-spin ml-2"></i> Loading...
+                        </div>
                     </div>
                 </div>
 
@@ -869,14 +882,17 @@
                 <div class="day-card">
                     <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200">Monday</h3>
                     <div class="flex flex-col gap-3">
-                        <input type="text" id="MondayCustomerName" placeholder="اسم الزبون" class="p-2 border rounded">
+                        <input type="text" id="MondayCustomerName" placeholder="Customer Name" class="p-2 border rounded">
                         <input type="time" id="MondayAppointmentTime" class="p-2 border rounded">
                         <button onclick="addCustomerAppointment('Monday')" class="add-appointment-btn">
-                            <i class="fas fa-plus ml-2"></i> إضافة موعد
+                            <i class="fas fa-plus ml-2"></i> Add Appointment
                         </button>
                     </div>
                     <div id="MondayList" class="mt-4 space-y-2 flex-grow">
-                        <!-- المواعيد ستظهر هنا -->
+                        <!-- Mواعيد ستظهر هنا -->
+                        <div class="text-center p-4 text-gray-500 flex items-center justify-center">
+                            <i class="fas fa-spinner fa-spin ml-2"></i> Loading...
+                        </div>
                     </div>
                 </div>
 
@@ -884,14 +900,17 @@
                 <div class="day-card">
                     <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200">Tuesday</h3>
                     <div class="flex flex-col gap-3">
-                        <input type="text" id="TuesdayCustomerName" placeholder="اسم الزبون" class="p-2 border rounded">
+                        <input type="text" id="TuesdayCustomerName" placeholder="Customer Name" class="p-2 border rounded">
                         <input type="time" id="TuesdayAppointmentTime" class="p-2 border rounded">
                         <button onclick="addCustomerAppointment('Tuesday')" class="add-appointment-btn">
-                            <i class="fas fa-plus ml-2"></i> إضافة موعد
+                            <i class="fas fa-plus ml-2"></i> Add Appointment
                         </button>
                     </div>
                     <div id="TuesdayList" class="mt-4 space-y-2 flex-grow">
-                        <!-- المواعيد ستظهر هنا -->
+                        <!-- Mواعيد ستظهر هنا -->
+                        <div class="text-center p-4 text-gray-500 flex items-center justify-center">
+                            <i class="fas fa-spinner fa-spin ml-2"></i> Loading...
+                        </div>
                     </div>
                 </div>
 
@@ -899,14 +918,17 @@
                 <div class="day-card">
                     <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200">Wednesday</h3>
                     <div class="flex flex-col gap-3">
-                        <input type="text" id="WednesdayCustomerName" placeholder="اسم الزبون" class="p-2 border rounded">
+                        <input type="text" id="WednesdayCustomerName" placeholder="Customer Name" class="p-2 border rounded">
                         <input type="time" id="WednesdayAppointmentTime" class="p-2 border rounded">
                         <button onclick="addCustomerAppointment('Wednesday')" class="add-appointment-btn">
-                            <i class="fas fa-plus ml-2"></i> إضافة موعد
+                            <i class="fas fa-plus ml-2"></i> Add Appointment
                         </button>
                     </div>
                     <div id="WednesdayList" class="mt-4 space-y-2 flex-grow">
-                        <!-- المواعيد ستظهر هنا -->
+                        <!-- Mواعيد ستظهر هنا -->
+                        <div class="text-center p-4 text-gray-500 flex items-center justify-center">
+                            <i class="fas fa-spinner fa-spin ml-2"></i> Loading...
+                        </div>
                     </div>
                 </div>
 
@@ -914,14 +936,17 @@
                 <div class="day-card">
                     <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200">Thursday</h3>
                     <div class="flex flex-col gap-3">
-                        <input type="text" id="ThursdayCustomerName" placeholder="اسم الزبون" class="p-2 border rounded">
+                        <input type="text" id="ThursdayCustomerName" placeholder="Customer Name" class="p-2 border rounded">
                         <input type="time" id="ThursdayAppointmentTime" class="p-2 border rounded">
                         <button onclick="addCustomerAppointment('Thursday')" class="add-appointment-btn">
-                            <i class="fas fa-plus ml-2"></i> إضافة موعد
+                            <i class="fas fa-plus ml-2"></i> Add Appointment
                         </button>
                     </div>
                     <div id="ThursdayList" class="mt-4 space-y-2 flex-grow">
-                        <!-- المواعيد ستظهر هنا -->
+                        <!-- Mواعيد ستظهر هنا -->
+                        <div class="text-center p-4 text-gray-500 flex items-center justify-center">
+                            <i class="fas fa-spinner fa-spin ml-2"></i> Loading...
+                        </div>
                     </div>
                 </div>
             </div>
