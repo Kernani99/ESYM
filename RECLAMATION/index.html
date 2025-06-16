@@ -4,13 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>نظام تسجيل البضائع الناقصة/الزائدة</title>
+    <!-- خط Cairo -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
+        /* الخط الأساسي للموقع والتأثيرات العامة */
         * {
             font-family: 'Cairo', sans-serif;
         }
@@ -18,23 +24,29 @@
             transition: background-color 0.3s, color 0.3s ease;
             min-height: 100vh;
         }
+
+        /* أنماط الوضع الليلي */
         .dark-mode {
             background-color: #1a202c;
             color: #f8f9fa;
         }
-        .dark-mode .bg-white { 
+        .dark-mode .bg-white {
             background-color: #2d3748;
             color: #f8f9fa;
         }
-        .dark-mode .bg-gray-100 { 
+        .dark-mode .bg-gray-100 {
             background-color: #1a202c;
             color: #f8f9fa;
         }
-        .dark-mode .text-gray-700, 
-        .dark-mode .text-gray-800 { 
+        .dark-mode .text-gray-700,
+        .dark-mode .text-gray-800,
+        .dark-mode .text-gray-600 {
             color: #f8f9fa;
         }
+        .dark-mode .border-gray-300 { border-color: #4a5568; }
+        .dark-mode .focus\:ring-blue-500:focus { --tw-ring-color: #63b3ed; }
         .dark-mode .bg-blue-600 { background-color: #3182ce; }
+        .dark-mode .hover\:bg-blue-700:hover { background-color: #2b6cb0; }
         .dark-mode .bg-green-600 { background-color: #38a169; }
         .dark-mode .bg-yellow-600 { background-color: #d69e2e; }
         .dark-mode .bg-indigo-600 { background-color: #667eea; }
@@ -57,7 +69,14 @@
             background-color: #2d4a3a;
             color: #d1fae5;
         }
+        .dark-mode .records-table thead tr {
+            background-color: #3182ce; /* Lighten header for dark mode */
+        }
+
+        /* أنماط شريط التنقل */
         .navbar { background-color: #1e3a8a; }
+
+        /* أنماط الشريط الجانبي */
         .sidebar {
             width: 70px;
             height: 100vh;
@@ -80,6 +99,7 @@
             transition: background-color 0.3s;
             white-space: nowrap;
             overflow: hidden;
+            color: #4a5568; /* Default color for sidebar items */
         }
         .sidebar-item:hover {
             background-color: #e9ecef;
@@ -87,6 +107,13 @@
         .sidebar-item i {
             margin-left: 10px;
             font-size: 1.2rem;
+            color: #2d3748; /* Default icon color */
+        }
+        .dark-mode .sidebar-item {
+            color: #e2e8f0;
+        }
+        .dark-mode .sidebar-item i {
+            color: #e2e8f0;
         }
         .sidebar-text {
             display: none;
@@ -94,11 +121,14 @@
         .sidebar:hover .sidebar-text {
             display: inline;
         }
+
+        /* أنماط المحتوى الرئيسي */
         .main-content {
             margin-right: 70px;
             transition: margin-right 0.3s;
-            height: calc(100vh - 80px);
-            overflow-y: auto;
+            /* No fixed height here, let content expand */
+            min-height: calc(100vh - 80px); /* Adjust based on navbar height */
+            padding-top: 80px; /* Space for fixed navbar */
         }
         .sidebar:hover ~ .main-content {
             margin-right: 200px;
@@ -113,11 +143,16 @@
         .action-btn:hover {
             transform: translateY(-2px);
         }
+
+        /* أنماط تجميع الزبائن */
         .customer-group {
             margin-bottom: 20px;
             border: 1px solid #e2e8f0;
             border-radius: 8px;
             overflow: hidden;
+        }
+        .dark-mode .customer-group {
+            border-color: #4a5568;
         }
         .customer-header {
             background-color: #4299e1;
@@ -134,8 +169,10 @@
             transition: max-height 0.3s ease-out;
         }
         .customer-records.expanded {
-            max-height: 5000px;
+            max-height: 5000px; /* Large enough to show all content */
         }
+
+        /* أنماط الحالة */
         .overdue {
             animation: pulse 2s infinite;
         }
@@ -164,26 +201,95 @@
             70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
             100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
         }
+
+        /* أنماط الأرقام الإنجليزية */
         .english-numbers {
-            font-family: Arial, sans-serif;
+            font-family: 'Arial', sans-serif !important; /* Force Arial for numbers */
         }
+
+        /* أنماط الجدول للملء التلقائي */
         .records-container {
             width: 100%;
             overflow-x: auto;
         }
         .records-table {
             width: 100%;
-            min-width: 1200px;
+            min-width: 1200px; /* Minimum width for horizontal scrolling */
         }
         .container {
             max-width: 100%;
             padding: 0 15px;
         }
+
+        /* أنماط صفحة تسجيل الدخول */
+        .login-screen {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            width: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background-color: #f4f4f4; /* Default background for login screen */
+            z-index: 2000; /* Ensure it's on top */
+        }
+        .dark-mode .login-screen {
+            background-color: #1a202c;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
-    <!-- الشريط الجانبي -->
-    <div class="sidebar">
+
+    <!-- شاشة تسجيل الدخول -->
+    <div id="loginScreen" class="login-screen">
+        <div class="bg-white p-8 rounded-lg shadow-lg max-w-sm w-full">
+            <!-- شعار SYM -->
+            <div class="flex justify-center mb-6">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/SYM_logo_of_Sanyang_Motor_20180408.svg/2480px-SYM_logo_of_Sanyang_Motor_20180408.svg.png" alt="SYM Logo" class="h-20 w-auto">
+            </div>
+
+            <h2 class="text-3xl font-bold text-gray-700 mb-6 text-center">
+                <i class="fas fa-lock text-blue-600 mr-2"></i> تسجيل الدخول
+            </h2>
+
+            <form id="loginForm" action="#" method="POST">
+                <div class="mb-5">
+                    <label for="loginUsername" class="block text-gray-700 text-sm font-semibold mb-2">اسم المستخدم:</label>
+                    <div class="relative">
+                        <input type="text" id="loginUsername" name="username" placeholder="أدخل اسم المستخدم"
+                               class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
+                               required>
+                        <i class="fas fa-user absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label for="loginPassword" class="block text-gray-700 text-sm font-semibold mb-2">كلمة المرور:</label>
+                    <div class="relative">
+                        <input type="password" id="loginPassword" name="password" placeholder="أدخل كلمة المرور"
+                               class="w-full p-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700"
+                               required>
+                        <i class="fas fa-key absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                </div>
+
+                <button type="submit"
+                        class="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition ease-in-out duration-300">
+                    تسجيل الدخول
+                </button>
+            </form>
+
+            <div class="text-center mt-6">
+                <a href="#" class="text-blue-600 hover:text-blue-800 text-sm font-medium transition ease-in-out duration-300">
+                    هل نسيت كلمة المرور؟
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- الشريط الجانبي (جزء من التطبيق الرئيسي) -->
+    <div class="sidebar hidden" id="appSidebar">
         <div class="sidebar-item" onclick="toggleSection('entryForm')">
             <i class="fas fa-edit"></i>
             <span class="sidebar-text">تسجيل البضائع</span>
@@ -193,18 +299,22 @@
             <span class="sidebar-text">سجل البضائع</span>
         </div>
         <div class="sidebar-item" onclick="toggleDarkMode()">
-            <i class="fas fa-moon"></i>
+            <i class="fas fa-moon" id="darkModeIcon"></i>
             <span class="sidebar-text">الوضع الليلي</span>
+        </div>
+        <div class="sidebar-item" onclick="logout()">
+            <i class="fas fa-sign-out-alt"></i>
+            <span class="sidebar-text">تسجيل الخروج</span>
         </div>
     </div>
 
-    <!-- المحتوى الرئيسي -->
-    <div class="main-content">
+    <!-- المحتوى الرئيسي للتطبيق (مخفي افتراضيا حتى تسجيل الدخول) -->
+    <div class="main-content hidden" id="mainApplicationContent">
         <!-- شريط التنقل -->
-        <nav class="navbar p-4 text-white shadow-lg">
+        <nav class="navbar p-4 text-white shadow-lg fixed top-0 w-full z-999">
             <div class="container flex justify-between items-center">
                 <div class="flex items-center space-x-2">
-                    <img src="https://brandlogos.net/wp-content/uploads/2022/10/sym_-_sanyang_motor-logo_brandlogos.net_mre4v.png" alt="Logo" class="h-12 w-auto">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/SYM_logo_of_Sanyang_Motor_20180408.svg/2480px-SYM_logo_of_Sanyang_Motor_20180408.svg.png" alt="Logo" class="h-12 w-auto">
                     <span class="text-xl font-bold hidden md:block">نظام تسجيل البضائع الناقصة/الزائدة</span>
                 </div>
                 <div class="flex items-center space-x-4">
@@ -215,7 +325,7 @@
 
         <!-- المحتوى الديناميكي -->
         <div class="container p-6">
-            <!-- قسم تسجيل البيانات (مخفي افتراضيا) -->
+            <!-- قسم تسجيل البيانات (مخفي افتراضيا عند البدء) -->
             <div id="entryForm" class="hidden">
                 <div class="bg-white p-6 rounded-lg shadow-lg mb-6">
                     <h2 class="text-xl font-semibold text-gray-700 mb-4">
@@ -284,7 +394,7 @@
                 </div>
             </div>
 
-            <!-- قسم سجل البضائع -->
+            <!-- قسم سجل البضائع (يعرض افتراضيا بعد تسجيل الدخول) -->
             <div id="recordsTable">
                 <div class="bg-white p-6 rounded-lg shadow-lg">
                     <div class="flex justify-between items-center mb-4">
@@ -329,48 +439,132 @@
         let allRecords = [];
         let customers = [];
 
-        // تعيين التاريخ الافتراضي لليوم
-        document.addEventListener('DOMContentLoaded', function() {
+        // العناصر الرئيسية
+        const loginScreen = document.getElementById('loginScreen');
+        const mainApplicationContent = document.getElementById('mainApplicationContent');
+        const appSidebar = document.getElementById('appSidebar');
+
+        // وظيفة للتحقق من حالة تسجيل الدخول
+        function checkLoginStatus() {
+            const loggedIn = sessionStorage.getItem('loggedIn');
+            if (loggedIn === 'true') {
+                loginScreen.classList.add('hidden');
+                mainApplicationContent.classList.remove('hidden');
+                appSidebar.classList.remove('hidden');
+                initializeMainApp(); // تهيئة التطبيق الرئيسي عند تسجيل الدخول
+            } else {
+                loginScreen.classList.remove('hidden');
+                mainApplicationContent.classList.add('hidden');
+                appSidebar.classList.add('hidden');
+            }
+        }
+
+        // تهيئة التطبيق الرئيسي (يتم استدعاؤها بعد تسجيل الدخول)
+        function initializeMainApp() {
             updateCurrentDate();
             setInterval(updateCurrentDate, 60000); // تحديث التاريخ كل دقيقة
-            
+
             const today = new Date();
             const formattedDate = today.toISOString().split('T')[0];
             document.getElementById('date').value = formattedDate;
-            
+
             // تفعيل الوضع الليلي إذا كان مفعلًا
             if (localStorage.getItem('darkMode') === 'true') {
                 document.body.classList.add('dark-mode');
-                document.querySelector('.sidebar-item i.fa-moon').classList.replace('fa-moon', 'fa-sun');
+                document.getElementById('darkModeIcon').classList.replace('fa-moon', 'fa-sun');
+            } else {
+                document.getElementById('darkModeIcon').classList.replace('fa-sun', 'fa-moon');
             }
 
             // تحميل بيانات الزبائن تلقائيا
             loadCustomers();
-            
+
             // تحميل البيانات من Firebase
             loadRecords();
-            
-            // عرض قسم السجلات افتراضيا
+
+            // عرض قسم السجلات افتراضيا بعد تسجيل الدخول
             document.getElementById('recordsTable').classList.remove('hidden');
-            
+            document.getElementById('entryForm').classList.add('hidden'); // إخفاء نموذج الإدخال افتراضيًا
+
             // التحقق من السجلات المتأخرة كل 5 دقائق
             setInterval(checkOverdueRecords, 300000);
             checkOverdueRecords();
+        }
+
+
+        // تشغيل التحقق من حالة تسجيل الدخول عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', checkLoginStatus);
+
+        // وظيفة تسجيل الدخول
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+
+            const correctUsername = 'KERNANI';
+            const correctPassword = 'KRHL0214';
+
+            if (username === correctUsername && password === correctPassword) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'تم تسجيل الدخول بنجاح!',
+                    text: 'مرحبًا بك!',
+                    timer: 1500,
+                    showConfirmButton: false
+                }).then(() => {
+                    sessionStorage.setItem('loggedIn', 'true'); // تعيين علامة تسجيل الدخول
+                    checkLoginStatus(); // تحديث واجهة المستخدم
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'خطأ في تسجيل الدخول',
+                    text: 'اسم المستخدم أو كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى.'
+                });
+            }
         });
+
+        // وظيفة تسجيل الخروج
+        function logout() {
+            Swal.fire({
+                title: 'هل أنت متأكد من تسجيل الخروج؟',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'نعم، تسجيل الخروج',
+                cancelButtonText: 'إلغاء'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    sessionStorage.removeItem('loggedIn'); // إزالة علامة تسجيل الدخول
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'تم تسجيل الخروج بنجاح!',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        checkLoginStatus(); // تحديث واجهة المستخدم
+                        // إعادة تعيين حقول تسجيل الدخول
+                        document.getElementById('loginUsername').value = '';
+                        document.getElementById('loginPassword').value = '';
+                    });
+                }
+            });
+        }
+        window.logout = logout; // لجعلها متاحة من onclick في HTML
+
 
         // تحديث التاريخ والوقت الحالي
         function updateCurrentDate() {
             const now = new Date();
-            const options = { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
+            const options = {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
                 day: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit'
             };
             const dateString = now.toLocaleDateString('ar-EG', options);
-            // استبدال الأرقام العربية بأرقام إنجليزية
             const englishDate = dateString.replace(/[٠-٩]/g, d => "٠١٢٣٤٥٦٧٨٩".indexOf(d));
             document.getElementById('currentDate').textContent = englishDate;
         }
@@ -381,20 +575,21 @@
             document.getElementById('recordsTable').classList.add('hidden');
             document.getElementById(sectionId).classList.remove('hidden');
         }
+        window.toggleSection = toggleSection; // لجعلها متاحة من onclick في HTML
 
         // تبديل الوضع الليلي
         function toggleDarkMode() {
             document.body.classList.toggle('dark-mode');
             localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
-            
-            // تغيير الأيقونة حسب الوضع
-            const icon = document.querySelector('.sidebar-item i.fa-moon, .sidebar-item i.fa-sun');
+
+            const icon = document.getElementById('darkModeIcon');
             if (document.body.classList.contains('dark-mode')) {
                 icon.classList.replace('fa-moon', 'fa-sun');
             } else {
                 icon.classList.replace('fa-sun', 'fa-moon');
             }
         }
+        window.toggleDarkMode = toggleDarkMode; // لجعلها متاحة من onclick في HTML
 
         // حساب الفرق بين الكميات
         document.getElementById('deliveredQty').addEventListener('input', calculateDifference);
@@ -404,10 +599,10 @@
             const delivered = parseFloat(document.getElementById('deliveredQty').value) || 0;
             const received = parseFloat(document.getElementById('receivedQty').value) || 0;
             const difference = received - delivered;
-            
+
             const differenceField = document.getElementById('difference');
             differenceField.value = difference;
-            
+
             if (difference > 0) {
                 differenceField.className = 'w-full p-3 border rounded positive english-numbers';
             } else if (difference < 0) {
@@ -420,51 +615,45 @@
         // تحميل بيانات الزبائن من Google Sheets تلقائيا من عمود CLIENT
         async function loadCustomers() {
             try {
-                // رابط ملف Google Sheets مع تحديد التصدير كـ CSV
                 const sheetId = '2PACX-1vTVFnFkW6NhZpBb3Wty2qAa97GNKg43Um0JdzqyTobWS-vtRNSJ4_aRjJ3OS-tG_1-GPOSeTr5levqI';
                 const csvUrl = `https://docs.google.com/spreadsheets/d/e/${sheetId}/pub?gid=0&single=true&output=csv`;
-                
+
                 const response = await fetch(csvUrl);
                 if (!response.ok) throw new Error('فشل في تحميل الملف');
-                
+
                 const csvData = await response.text();
-                
-                // تحويل CSV إلى JSON
+
                 customers = parseCSV(csvData);
-                
+
                 if (customers.length === 0) {
                     throw new Error('لا توجد بيانات في الملف');
                 }
-                
-                // ملء قائمة الزبائن من عمود CLIENT
+
                 const customerSelect = document.getElementById('customer');
                 customerSelect.innerHTML = '<option value="">اختر الزبون</option>';
-                
-                // استخراج أسماء الزبائن الفريدة من عمود CLIENT
+
                 const clientNames = new Set();
-                
+
                 customers.forEach(row => {
-                    // البحث عن عمود CLIENT بأحرف مختلفة (كبير/صغير)
                     const clientKey = Object.keys(row).find(key => key.toLowerCase() === 'client');
                     if (clientKey && row[clientKey] && row[clientKey].trim() !== '') {
                         clientNames.add(row[clientKey].trim());
                     }
                 });
-                
+
                 if (clientNames.size === 0) {
                     throw new Error('لا توجد أسماء زبائن في عمود CLIENT');
                 }
-                
-                // إضافة الأسماء إلى القائمة المنسدلة
+
                 clientNames.forEach(name => {
                     const option = document.createElement('option');
                     option.value = name;
                     option.textContent = name;
                     customerSelect.appendChild(option);
                 });
-                
+
                 console.log('تم تحميل بيانات الزبائن بنجاح:', clientNames);
-                
+
             } catch (error) {
                 console.error('حدث خطأ أثناء تحميل بيانات الزبائن:', error);
                 Swal.fire({
@@ -472,8 +661,7 @@
                     title: 'خطأ',
                     text: 'حدث خطأ أثناء تحميل بيانات الزبائن: ' + error.message
                 });
-                
-                // وضع قيم افتراضية في حالة الخطأ
+
                 const customerSelect = document.getElementById('customer');
                 customerSelect.innerHTML = `
                     <option value="">اختر الزبون</option>
@@ -488,23 +676,22 @@
         function parseCSV(csv) {
             const lines = csv.split('\n').filter(line => line.trim() !== '');
             if (lines.length < 1) return [];
-            
-            // استخراج العناوين من السطر الأول
+
             const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-            
+
             const result = [];
-            
+
             for (let i = 1; i < lines.length; i++) {
                 const currentline = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                
+
                 const obj = {};
                 for (let j = 0; j < headers.length; j++) {
                     obj[headers[j]] = currentline[j] ? currentline[j].trim().replace(/"/g, '') : '';
                 }
-                
+
                 result.push(obj);
             }
-            
+
             return result;
         }
 
@@ -517,12 +704,11 @@
                     renderRecordsByCustomer([]);
                     return;
                 }
-                
-                // تحويل البيانات إلى مصفوفة مع الحفاظ على المعرف
+
                 allRecords = Object.keys(recordsData).map(key => {
                     return { ...recordsData[key], id: key };
                 });
-                
+
                 renderRecordsByCustomer(allRecords);
             });
         }
@@ -532,26 +718,24 @@
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             const customerSearchTerm = document.getElementById('customerSearch').value.toLowerCase();
             const statusFilter = document.getElementById('statusFilter').value;
-            
-            // تصفية السجلات حسب البحث والتصفية
+
             const filteredRecords = records
                 .filter(record => {
-                    const matchesSearch = 
-                        (record.itemCode && record.itemCode.toString().toLowerCase().includes(searchTerm)) || 
+                    const matchesSearch =
+                        (record.itemCode && record.itemCode.toString().toLowerCase().includes(searchTerm)) ||
                         (record.itemName && record.itemName.toLowerCase().includes(searchTerm));
-                    
-                    const matchesCustomer = 
+
+                    const matchesCustomer =
                         record.customer && record.customer.toLowerCase().includes(customerSearchTerm);
-                    
-                    const matchesStatus = 
-                        statusFilter === 'all' || 
+
+                    const matchesStatus =
+                        statusFilter === 'all' ||
                         record.status === statusFilter;
-                    
+
                     return matchesSearch && matchesCustomer && matchesStatus;
                 })
-                .sort((a, b) => new Date(b.date) - new Date(a.date)); // أحدث المدخلات أولاً
-            
-            // تجميع السجلات حسب الزبون
+                .sort((a, b) => new Date(b.date) - new Date(a.date));
+
             const groupedRecords = {};
             filteredRecords.forEach(record => {
                 if (!groupedRecords[record.customer]) {
@@ -559,11 +743,10 @@
                 }
                 groupedRecords[record.customer].push(record);
             });
-            
-            // عرض البيانات المجمعة
+
             const container = document.getElementById('recordsContainer');
             container.innerHTML = '';
-            
+
             if (Object.keys(groupedRecords).length === 0) {
                 container.innerHTML = `
                     <div class="text-center p-4 text-gray-500">
@@ -572,21 +755,21 @@
                 `;
                 return;
             }
-            
+
             for (const customer in groupedRecords) {
                 const customerGroup = document.createElement('div');
                 customerGroup.className = 'customer-group mb-6';
-                
+
                 const customerHeader = document.createElement('div');
                 customerHeader.className = 'customer-header';
                 customerHeader.innerHTML = `
                     <span>${customer}</span>
                     <i class="fas fa-chevron-down"></i>
                 `;
-                
+
                 const customerRecordsDiv = document.createElement('div');
                 customerRecordsDiv.className = 'customer-records';
-                
+
                 const table = document.createElement('table');
                 table.className = 'records-table w-full border-collapse';
                 table.innerHTML = `
@@ -611,13 +794,12 @@
                         ${groupedRecords[customer].map(record => createRecordRow(record)).join('')}
                     </tbody>
                 `;
-                
+
                 customerRecordsDiv.appendChild(table);
                 customerGroup.appendChild(customerHeader);
                 customerGroup.appendChild(customerRecordsDiv);
                 container.appendChild(customerGroup);
-                
-                // إضافة حدث النقر لفتح/إغلاق مجموعة الزبون
+
                 customerHeader.addEventListener('click', () => {
                     customerRecordsDiv.classList.toggle('expanded');
                     const icon = customerHeader.querySelector('i');
@@ -631,7 +813,7 @@
         function createRecordRow(record) {
             const difference = record.receivedQty - record.deliveredQty;
             let differenceClass = 'px-2 py-1 rounded-full text-xs english-numbers';
-            
+
             if (difference > 0) {
                 differenceClass += ' bg-green-100 text-green-800';
             } else if (difference < 0) {
@@ -639,14 +821,12 @@
             } else {
                 differenceClass += ' bg-gray-100 text-gray-800';
             }
-            
-            // التحقق من انتهاء المدة (أكثر من شهر)
+
             const recordDate = new Date(record.date);
             const today = new Date();
             const oneMonthAgo = new Date(today.setMonth(today.getMonth() - 1));
             const isOverdue = record.status === 'قيد الدراسة' && recordDate < oneMonthAgo;
-            
-            // إنشاء عنصر الحالة مع الأيقونة
+
             let statusElement;
             if (record.status === 'قيد الدراسة') {
                 statusElement = `
@@ -663,7 +843,7 @@
                     </span>
                 `;
             }
-            
+
             return `
                 <tr class="${isOverdue ? 'overdue bg-red-50' : ''}">
                     <td class="p-3 english-numbers">${record.date}</td>
@@ -694,31 +874,10 @@
             `;
         }
 
-        // التحقق من السجلات المتأخرة
-        function checkOverdueRecords() {
-            const today = new Date();
-            const oneMonthAgo = new Date(today.setMonth(today.getMonth() - 1));
-            
-            const overdueRecords = allRecords.filter(record => {
-                const recordDate = new Date(record.date);
-                return record.status === 'قيد الدراسة' && recordDate < oneMonthAgo;
-            });
-            
-            if (overdueRecords.length > 0) {
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'تنبيه',
-                    html: `هناك ${overdueRecords.length} سجل(سجلات) في حالة "قيد الدراسة" لأكثر من شهر. <br> يرجى مراجعتها وتحديث حالتها.`,
-                    confirmButtonText: 'حسناً',
-                    timer: 10000
-                });
-            }
-        }
-
         // إضافة سجل جديد إلى Firebase
         document.getElementById('goodsForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            
+
             const record = {
                 id: Date.now().toString(),
                 date: document.getElementById('date').value,
@@ -732,19 +891,16 @@
                 warehouseManager: document.getElementById('warehouseManager').value,
                 status: document.getElementById('status').value,
                 notes: document.getElementById('notes').value,
-                difference: parseFloat(document.getElementById('difference').value) || 0,
-                createdAt: new Date().toISOString()
+                difference: parseFloat(document.getElementById('difference').value) || 0
             };
-            
-            // إضافة السجل إلى Firebase
+
             database.ref('goodsRecords/' + record.id).set(record)
                 .then(() => {
-                    // إعادة تعيين النموذج
                     this.reset();
                     document.getElementById('date').value = new Date().toISOString().split('T')[0];
                     document.getElementById('difference').value = '';
                     document.getElementById('difference').className = 'w-full p-3 border rounded bg-gray-100 english-numbers';
-                    
+
                     Swal.fire({
                         icon: 'success',
                         title: 'تم الحفظ',
@@ -768,53 +924,78 @@
                 .then((snapshot) => {
                     const record = snapshot.val();
                     if (!record) return;
-                    
+
+                    const customerOptions = customers.map(c => {
+                        const clientKey = Object.keys(c).find(key => key.toLowerCase() === 'client');
+                        const clientName = clientKey ? c[clientKey].trim() : '';
+                        const selected = (record.customer === clientName) ? 'selected' : '';
+                        return `<option value="${clientName}" ${selected}>${clientName}</option>`;
+                    }).join('');
+
                     Swal.fire({
                         title: 'تعديل السجل',
                         html: `
+                            <label for="editDate" class="swal2-label">التاريخ</label>
                             <input type="date" id="editDate" class="swal2-input english-numbers" value="${record.date}">
+                            <label for="editCustomer" class="swal2-label">الزبون</label>
                             <select id="editCustomer" class="swal2-select">
-                                ${customers.map(c => `<option value="${c}" ${c === record.customer ? 'selected' : ''}>${c}</option>`).join('')}
+                                ${customerOptions}
                             </select>
+                            <label for="editCommercialAgent" class="swal2-label">العميل التجاري</label>
                             <input type="text" id="editCommercialAgent" class="swal2-input" value="${record.commercialAgent || ''}" placeholder="العميل التجاري">
+                            <label for="editBcNumber" class="swal2-label">رقم BC</label>
                             <input type="text" id="editBcNumber" class="swal2-input english-numbers" value="${record.bcNumber || ''}" placeholder="رقم BC">
+                            <label for="editItemCode" class="swal2-label">كود السلعة</label>
                             <input type="text" id="editItemCode" class="swal2-input english-numbers" value="${record.itemCode}" placeholder="كود السلعة">
+                            <label for="editItemName" class="swal2-label">اسم القطعة</label>
                             <input type="text" id="editItemName" class="swal2-input" value="${record.itemName}" placeholder="اسم القطعة">
+                            <label for="editDeliveredQty" class="swal2-label">الكمية المسلمة</label>
                             <input type="number" id="editDeliveredQty" class="swal2-input english-numbers" value="${record.deliveredQty}" placeholder="الكمية المسلمة">
+                            <label for="editReceivedQty" class="swal2-label">الكمية المستلمة</label>
                             <input type="number" id="editReceivedQty" class="swal2-input english-numbers" value="${record.receivedQty}" placeholder="الكمية المستلمة">
+                            <label for="editWarehouseManager" class="swal2-label">المخزني المسؤول</label>
                             <input type="text" id="editWarehouseManager" class="swal2-input" value="${record.warehouseManager}" placeholder="المخزني المسؤول">
+                            <label for="editStatus" class="swal2-label">الحالة</label>
                             <select id="editStatus" class="swal2-select">
                                 <option value="قيد الدراسة" ${record.status === 'قيد الدراسة' ? 'selected' : ''}>قيد الدراسة</option>
                                 <option value="تم الدراسة" ${record.status === 'تم الدراسة' ? 'selected' : ''}>تم الدراسة</option>
                             </select>
+                            <label for="editNotes" class="swal2-label">ملاحظات</label>
                             <textarea id="editNotes" class="swal2-textarea" placeholder="ملاحظات">${record.notes || ''}</textarea>
-                            <input type="text" id="editModificationNote" class="swal2-input" placeholder="ملاحظة التعديل">
+                            <label for="editLastModifiedNote" class="swal2-label">ملاحظة آخر تعديل (اختياري)</label>
+                            <input type="text" id="editLastModifiedNote" class="swal2-input" placeholder="اكتب ملاحظة حول التعديل">
                         `,
                         showCancelButton: true,
                         confirmButtonText: 'حفظ التعديلات',
                         cancelButtonText: 'إلغاء',
+                        confirmButtonColor: '#3085d6',
                         preConfirm: () => {
+                            const delivered = parseFloat(document.getElementById('editDeliveredQty').value) || 0;
+                            const received = parseFloat(document.getElementById('editReceivedQty').value) || 0;
+                            const difference = received - delivered;
+                            const lastModifiedNote = document.getElementById('editLastModifiedNote').value;
+
                             const updatedRecord = {
-                                ...record,
+                                id: record.id,
                                 date: document.getElementById('editDate').value,
                                 customer: document.getElementById('editCustomer').value,
                                 commercialAgent: document.getElementById('editCommercialAgent').value,
                                 bcNumber: document.getElementById('editBcNumber').value,
                                 itemCode: document.getElementById('editItemCode').value,
                                 itemName: document.getElementById('editItemName').value,
-                                deliveredQty: parseFloat(document.getElementById('editDeliveredQty').value),
-                                receivedQty: parseFloat(document.getElementById('editReceivedQty').value),
+                                deliveredQty: delivered,
+                                receivedQty: received,
                                 warehouseManager: document.getElementById('editWarehouseManager').value,
                                 status: document.getElementById('editStatus').value,
                                 notes: document.getElementById('editNotes').value,
-                                difference: parseFloat(document.getElementById('editReceivedQty').value) - parseFloat(document.getElementById('editDeliveredQty').value),
+                                difference: difference,
                                 lastModified: {
                                     date: new Date().toISOString().split('T')[0],
-                                    note: document.getElementById('editModificationNote').value || 'تم التعديل بدون ملاحظات'
+                                    note: lastModifiedNote
                                 }
                             };
-                            
-                            return database.ref('goodsRecords/' + id).update(updatedRecord)
+
+                            return database.ref('goodsRecords/' + record.id).update(updatedRecord)
                                 .then(() => {
                                     Swal.fire('تم التعديل!', 'تم تحديث السجل بنجاح.', 'success');
                                 })
@@ -861,6 +1042,26 @@
         document.getElementById('statusFilter').addEventListener('change', () => {
             renderRecordsByCustomer(allRecords);
         });
+
+        // التحقق من السجلات المتأخرة
+        function checkOverdueRecords() {
+            const today = new Date();
+            const oneMonthAgo = new Date(today.setMonth(today.getMonth() - 1));
+
+            const overdueRecords = allRecords.filter(record => {
+                const recordDate = new Date(record.date);
+                return record.status === 'قيد الدراسة' && recordDate < oneMonthAgo;
+            });
+
+            if (overdueRecords.length > 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'تنبيه',
+                    html: `هناك ${overdueRecords.length} سجل (سجلات) متأخر (ة) تحتاج إلى مراجعة.`,
+                    confirmButtonText: 'حسناً'
+                });
+            }
+        }
     </script>
 </body>
 </html>
