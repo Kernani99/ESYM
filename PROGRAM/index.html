@@ -86,16 +86,42 @@
 
 
         /**
+         * Updates the connection status indicator in the UI.
+         * @param {string} status - The status message (e.g., 'Connecting...', 'Connected', 'Disconnected').
+         * @param {string} colorClass - Tailwind CSS class for color (e.g., 'text-yellow-500', 'text-green-500', 'text-red-500').
+         * @param {string} dotColorClass - Tailwind CSS class for dot color (e.g., 'bg-yellow-500', 'bg-green-500', 'bg-red-500').
+         */
+        function updateConnectionStatus(status, colorClass, dotColorClass) {
+            const statusTextElement = document.getElementById('connectionStatusText');
+            const statusDotElement = document.getElementById('connectionStatusDot');
+
+            if (statusTextElement && statusDotElement) {
+                statusTextElement.textContent = status;
+                // Remove all color classes before adding the new one
+                statusTextElement.className = statusTextElement.className.split(' ').filter(c => !c.startsWith('text-')).join(' ');
+                statusTextElement.classList.add(colorClass);
+
+                statusDotElement.className = statusDotElement.className.split(' ').filter(c => !c.startsWith('bg-')).join(' ');
+                statusDotElement.classList.add(dotColorClass);
+            }
+        }
+
+
+        /**
          * Initializes Firebase authentication and sets up the auth state listener.
          * Once authenticated, it sets the userId and initializes Firestore references.
          */
         async function initializeAuthAndFirestore() {
+            updateConnectionStatus('Connecting...', 'text-yellow-500', 'bg-yellow-500');
+
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
                     userId = user.uid;
                     appointmentsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/customerAppointments`);
                     isAuthReady = true;
                     document.getElementById('userIdDisplay').textContent = `ID: ${userId}`;
+                    updateConnectionStatus('Connected', 'text-green-500', 'bg-green-500');
+
                     currentWeekStartDate = getSundayOfCurrentWeek(new Date()); // Set initial week to current week
                     updateWeekDisplay(); // Update display immediately
                     loadAppointments(); // Load appointments after authentication is ready
@@ -110,9 +136,10 @@
                         console.error("Error signing in:", error);
                         Swal.fire({
                             icon: 'error',
-                            title: 'Authentication Error', // Changed to English for consistency
+                            title: 'Authentication Error',
                             text: 'Failed to sign in: ' + error.message
                         });
+                        updateConnectionStatus('Disconnected', 'text-red-500', 'bg-red-500');
                     }
                 }
             });
@@ -142,6 +169,7 @@
                     title: 'Error Loading Appointments',
                     text: 'An error occurred while loading appointments: ' + error.message
                 });
+                updateConnectionStatus('Data Error', 'text-red-500', 'bg-red-500'); // Specific status for data loading error
             });
         }
 
@@ -232,7 +260,7 @@
             if (!customerName || !appointmentTime || !isAuthReady) {
                 Swal.fire({
                     icon: 'warning',
-                    title: 'Incomplete Data', // Changed to English for consistency
+                    title: 'Incomplete Data',
                     text: 'Please enter customer name and appointment time.'
                 });
                 return;
@@ -729,6 +757,28 @@
                 grid-template-columns: 1fr; /* Single column on small screens */
             }
         }
+
+        /* New styles for professional connection status */
+        .connection-status {
+            display: flex;
+            align-items: center;
+            font-size: 0.875rem; /* text-sm */
+            font-weight: 500; /* Medium weight */
+            color: var(--text-color-dark); /* Ensure it's visible in nav */
+        }
+        .connection-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-left: 8px; /* space-x-2 equivalent */
+            transition: background-color 0.3s ease;
+        }
+        .text-yellow-500 { color: #f59e0b; }
+        .bg-yellow-500 { background-color: #f59e0b; }
+        .text-green-500 { color: #10b981; }
+        .bg-green-500 { background-color: #10b981; }
+        .text-red-500 { color: #ef4444; }
+        .bg-red-500 { background-color: #ef4444; }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -771,6 +821,10 @@
                 </div>
                 <div class="flex flex-col items-end">
                     <span id="userIdDisplay" class="text-white text-xs md:text-sm mt-1"></span>
+                    <div class="connection-status text-xs md:text-sm mt-1">
+                        <div id="connectionStatusDot" class="connection-dot"></div>
+                        <span id="connectionStatusText" class="font-medium">Connecting...</span>
+                    </div>
                 </div>
             </div>
         </nav>
