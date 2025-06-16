@@ -3,413 +3,939 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SYM Algeria - المهام اليومية</title>
+    <title>نظام إدارة المهام والملاحظات - SYM Algeria</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+
+    <!-- Firebase SDKs - Updated to v11.6.1 and specific modules -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global variables for Firebase (MUST BE USED as per instructions)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Global variables for data storage and user management
+        let tasks = [];
+        let notes = [];
+        let userId = null; // Will be set after authentication
+        let isAuthReady = false; // Flag to ensure Firestore operations run after auth
+        let currentFilterDate = new Date(); // Stores the currently selected date for filtering
+
+        // References to Firestore collections
+        let tasksCollectionRef;
+        let notesCollectionRef;
+
+        /**
+         * Initializes Firebase authentication and sets up the auth state listener.
+         * Once authenticated, it sets the userId and initializes Firestore references.
+         */
+        async function initializeAuthAndFirestore() {
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    // User is signed in
+                    userId = user.uid;
+                    tasksCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/tasks`);
+                    notesCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/notes`);
+                    isAuthReady = true; // Auth is ready, can load data
+                    document.getElementById('userIdDisplay').textContent = `ID: ${userId}`;
+                    loadData(); // Load data after authentication is ready
+                } else {
+                    // User is signed out, attempt to sign in
+                    try {
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (error) {
+                        console.error("Error signing in:", error);
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'خطأ في المصادقة',
+                            text: 'فشل تسجيل الدخول: ' + error.message
+                        });
+                    }
+                }
+            });
+        }
+
+        /**
+         * Loads tasks and notes data from Firestore in real-time using onSnapshot listeners.
+         * Data loading only occurs if authentication is ready.
+         */
+        function loadData() {
+            if (!isAuthReady) {
+                console.log("Authentication not ready, delaying data load.");
+                return;
+            }
+
+            // Display loading indicators
+            document.getElementById('tasksList').innerHTML = `<div class="text-center p-4 text-gray-500 flex items-center justify-center">
+                <i class="fas fa-spinner fa-spin ml-2"></i> جاري تحميل المهام...
+            </div>`;
+            document.getElementById('notesList').innerHTML = `<div class="text-center p-4 text-gray-500 flex items-center justify-center">
+                <i class="fas fa-spinner fa-spin ml-2"></i> جاري تحميل الملاحظات...
+            </div>`;
+
+            // Listen for real-time changes to tasks
+            onSnapshot(query(tasksCollectionRef), (snapshot) => {
+                tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                filterAndRenderTasks(); // Filter and render based on currentFilterDate
+                updateProgress();
+            }, (error) => {
+                console.error("Error fetching tasks:", error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'خطأ في تحميل المهام',
+                    text: 'حدث خطأ أثناء تحميل المهام: ' + error.message
+                });
+            });
+
+            // Listen for real-time changes to notes
+            onSnapshot(query(notesCollectionRef), (snapshot) => {
+                notes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                filterAndRenderNotes(); // Filter and render based on currentFilterDate
+            }, (error) => {
+                console.error("Error fetching notes:", error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'خطأ في تحميل الملاحظات',
+                    text: 'حدث خطأ أثناء تحميل الملاحظات: ' + error.message
+                });
+            });
+        }
+
+        /**
+         * Filters tasks based on the currentFilterDate and then renders them.
+         */
+        function filterAndRenderTasks() {
+            const filteredTasks = tasks.filter(task => {
+                // Assuming task.createdAt is an ISO string like "2023-10-27T10:00:00.000Z"
+                const taskDate = new Date(task.createdAt);
+                return taskDate.toDateString() === currentFilterDate.toDateString();
+            });
+            renderTasks(filteredTasks);
+            updateProgress(filteredTasks); // Update progress based on filtered tasks
+        }
+
+        /**
+         * Filters notes based on the currentFilterDate and then renders them.
+         */
+        function filterAndRenderNotes() {
+            const filteredNotes = notes.filter(note => {
+                // For notes, we check the 'date' field if available, or createdAt
+                const noteDateString = note.date || new Date(note.createdAt).toISOString().split('T')[0];
+                const noteDate = new Date(noteDateString);
+                return noteDate.toDateString() === currentFilterDate.toDateString();
+            });
+            renderNotes(filteredNotes);
+        }
+
+        /**
+         * Renders the list of tasks to the UI.
+         * @param {Array} tasksToRender - The array of tasks to display.
+         */
+        function renderTasks(tasksToRender) {
+            const tasksList = document.getElementById('tasksList');
+            tasksList.innerHTML = ''; // Clear existing tasks
+
+            if (tasksToRender.length === 0) {
+                tasksList.innerHTML = `
+                    <div class="text-center p-4 text-gray-500">
+                        لا توجد مهام مسجلة لهذا اليوم.
+                    </div>
+                `;
+                return;
+            }
+
+            tasksToRender.forEach(task => {
+                const taskElement = document.createElement('div');
+                taskElement.className = 'task-card bg-white p-4 rounded-lg shadow-md border border-gray-200 fade-in';
+
+                let statusClass = '';
+                let statusText = '';
+                switch(task.status) {
+                    case 'pending':
+                        statusClass = 'status-pending';
+                        statusText = 'قيد الانتظار';
+                        break;
+                    case 'in-progress':
+                        statusClass = 'status-in-progress';
+                        statusText = 'قيد التنفيذ';
+                        break;
+                    case 'completed':
+                        statusClass = 'status-completed';
+                        statusText = 'مكتملة';
+                        break;
+                }
+
+                taskElement.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center flex-grow">
+                            <span class="text-gray-800 text-lg ${task.status === 'completed' ? 'line-through text-gray-500' : ''}">${task.text}</span>
+                        </div>
+                        <div class="flex items-center space-x-2 mr-2">
+                            <span class="px-3 py-1 rounded-full text-xs font-semibold ${statusClass}">${statusText}</span>
+                            <button onclick="editTask('${task.id}')" class="text-blue-600 hover:text-blue-800 transition-colors duration-200 p-1 rounded-full hover:bg-blue-100" aria-label="تعديل المهمة">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="deleteTask('${task.id}')" class="text-red-600 hover:text-red-800 transition-colors duration-200 p-1 rounded-full hover:bg-red-100" aria-label="حذف المهمة">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                tasksList.appendChild(taskElement);
+            });
+        }
+
+        /**
+         * Renders the list of notes to the UI.
+         * @param {Array} notesToRender - The array of notes to display.
+         */
+        function renderNotes(notesToRender) {
+            const notesList = document.getElementById('notesList');
+            notesList.innerHTML = ''; // Clear existing notes
+
+            if (notesToRender.length === 0) {
+                notesList.innerHTML = `
+                    <div class="text-center p-4 text-gray-500">
+                        لا توجد ملاحظات مسجلة لهذا اليوم.
+                    </div>
+                `;
+                return;
+            }
+
+            notesToRender.forEach(note => {
+                const noteElement = document.createElement('div');
+                noteElement.className = 'bg-white p-4 rounded-lg shadow-md border border-gray-200 fade-in';
+
+                noteElement.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <div class="flex-grow">
+                            <p class="text-gray-800 text-lg">${note.text}</p>
+                            <small class="text-gray-500">التاريخ: ${note.date || 'لا يوجد'}</small>
+                        </div>
+                        <button onclick="deleteNote('${note.id}')" class="text-red-600 hover:text-red-800 transition-colors duration-200 p-1 rounded-full hover:bg-red-100" aria-label="حذف الملاحظة">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+
+                notesList.appendChild(noteElement);
+            });
+        }
+
+        /**
+         * Updates the progress bar and percentage based on completed tasks.
+         * @param {Array} tasksToCount - The array of tasks to use for progress calculation.
+         */
+        function updateProgress(tasksToCount = tasks) { // Default to all tasks if not filtered
+            const totalTasks = tasksToCount.length;
+            const completedTasks = tasksToCount.filter(task => task.status === 'completed').length;
+
+            const percentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+            document.getElementById('progressBar').style.width = percentage + '%';
+            document.getElementById('progressPercentage').textContent = percentage + '%';
+        }
+
+        /**
+         * Handles adding a new task to Firestore.
+         */
+        document.getElementById('taskForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const taskInput = document.getElementById('taskInput');
+            const taskText = taskInput.value.trim();
+            const taskStatus = document.getElementById('taskStatus').value;
+
+            if (!taskText || !isAuthReady) return; // Ensure auth is ready before adding
+
+            const newTask = {
+                text: taskText,
+                status: taskStatus,
+                createdAt: new Date().toISOString() // Store current timestamp for creation
+            };
+
+            try {
+                await addDoc(tasksCollectionRef, newTask);
+                taskInput.value = ''; // Clear input field
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'خطأ',
+                    text: 'حدث خطأ أثناء إضافة المهمة: ' + error.message
+                });
+            }
+        });
+
+        /**
+         * Handles adding a new note to Firestore.
+         */
+        document.getElementById('noteForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const noteInput = document.getElementById('noteInput');
+            const noteText = noteInput.value.trim();
+            const noteDateInput = document.getElementById('noteDate');
+            const noteDate = noteDateInput.value; // YYYY-MM-DD format
+
+            if (!noteText || !isAuthReady) return; // Ensure auth is ready before adding
+
+            const newNote = {
+                text: noteText,
+                date: noteDate || new Date().toISOString().split('T')[0], // Use selected date or today's date (YYYY-MM-DD)
+                createdAt: new Date().toISOString() // Store current timestamp for creation
+            };
+
+            try {
+                await addDoc(notesCollectionRef, newNote);
+                noteInput.value = ''; // Clear input field
+                noteDateInput.value = ''; // Clear date input field
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'خطأ',
+                    text: 'حدث خطأ أثناء إضافة الملاحظة: ' + error.message
+                });
+            }
+        });
+
+        /**
+         * Opens the edit task modal and populates it with existing task data.
+         * @param {string} taskId - The ID of the task to edit.
+         */
+        window.editTask = function(taskId) { // Made global for onclick in HTML
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            document.getElementById('editTaskId').value = taskId;
+            document.getElementById('editTaskText').value = task.text;
+            document.getElementById('editTaskStatus').value = task.status;
+
+            document.getElementById('editTaskModal').classList.remove('hidden');
+        };
+
+        /**
+         * Handles saving edits to an existing task in Firestore.
+         */
+        document.getElementById('editTaskForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const taskId = document.getElementById('editTaskId').value;
+            const taskText = document.getElementById('editTaskText').value.trim();
+            const taskStatus = document.getElementById('editTaskStatus').value;
+
+            if (!taskText || !isAuthReady) return; // Ensure auth is ready
+
+            const taskDocRef = doc(db, `artifacts/${appId}/users/${userId}/tasks`, taskId);
+
+            try {
+                await updateDoc(taskDocRef, {
+                    text: taskText,
+                    status: taskStatus
+                });
+                closeEditModal();
+            } catch (error) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'خطأ',
+                    text: 'حدث خطأ أثناء تعديل المهمة: ' + error.message
+                });
+            }
+        });
+
+        /**
+         * Deletes a task from Firestore after user confirmation.
+         * @param {string} taskId - The ID of the task to delete.
+         */
+        window.deleteTask = function(taskId) { // Made global for onclick in HTML
+            Swal.fire({
+                title: 'هل أنت متأكد؟',
+                text: 'سيتم حذف هذه المهمة نهائيًا!',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'نعم، احذف!',
+                cancelButtonText: 'إلغاء',
+                confirmButtonColor: '#d33'
+            }).then(async (result) => { // Use async here for await inside
+                if (result.isConfirmed && isAuthReady) {
+                    const taskDocRef = doc(db, `artifacts/${appId}/users/${userId}/tasks`, taskId);
+                    try {
+                        await deleteDoc(taskDocRef);
+                    } catch (error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'خطأ',
+                            text: 'حدث خطأ أثناء حذف المهمة: ' + error.message
+                        });
+                    }
+                }
+            });
+        };
+
+        /**
+         * Deletes a note from Firestore after user confirmation.
+         * @param {string} noteId - The ID of the note to delete.
+         */
+        window.deleteNote = function(noteId) { // Made global for onclick in HTML
+            Swal.fire({
+                title: 'هل أنت متأكد؟',
+                text: 'سيتم حذف هذه الملاحظة نهائيًا!',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'نعم، احذف!',
+                cancelButtonText: 'إلغاء',
+                confirmButtonColor: '#d33'
+            }).then(async (result) => { // Use async here for await inside
+                if (result.isConfirmed && isAuthReady) {
+                    const noteDocRef = doc(db, `artifacts/${appId}/users/${userId}/notes`, noteId);
+                    try {
+                        await deleteDoc(noteDocRef);
+                    } catch (error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'خطأ',
+                            text: 'حدث خطأ أثناء حذف الملاحظة: ' + error.message
+                        });
+                    }
+                }
+            });
+        };
+
+        /**
+         * Closes the task edit modal.
+         */
+        window.closeEditModal = function() { // Made global for onclick in HTML
+            document.getElementById('editTaskModal').classList.add('hidden');
+        };
+
+        /**
+         * Toggles between the "Tasks" and "Notes" sections.
+         * @param {string} sectionId - The ID of the section to show ('tasksSection' or 'notesSection').
+         */
+        window.toggleSection = function(sectionId) { // Made global for onclick in HTML
+            document.getElementById('tasksSection').classList.add('hidden');
+            document.getElementById('notesSection').classList.add('hidden');
+            document.getElementById(sectionId).classList.remove('hidden');
+            // Re-filter and render data when switching sections
+            filterAndRenderTasks();
+            filterAndRenderNotes();
+        };
+
+        /**
+         * Toggles dark mode on/off and saves the preference to local storage.
+         * Also updates the moon/sun icon in the sidebar.
+         */
+        window.toggleDarkMode = function() { // Made global for onclick in HTML
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+
+            const icon = document.querySelector('.sidebar-item i.fa-moon, .sidebar-item i.fa-sun');
+            if (document.body.classList.contains('dark-mode')) {
+                icon.classList.replace('fa-moon', 'fa-sun');
+            } else {
+                icon.classList.replace('fa-sun', 'fa-moon');
+            }
+        };
+
+        /**
+         * Updates the current date and time displayed in the navbar.
+         */
+        function updateCurrentDateDisplay() {
+            const options = {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            };
+            // Display the current filter date in Western numerals (en-US locale)
+            document.getElementById('currentFilterDateDisplay').textContent = currentFilterDate.toLocaleDateString('en-US', options);
+        }
+
+        /**
+         * Moves the currentFilterDate to the previous day and re-renders data.
+         */
+        window.goToPreviousDay = function() { // Made global for onclick in HTML
+            currentFilterDate.setDate(currentFilterDate.getDate() - 1);
+            updateCurrentDateDisplay();
+            filterAndRenderTasks();
+            filterAndRenderNotes();
+        };
+
+        /**
+         * Moves the currentFilterDate to the next day and re-renders data.
+         */
+        window.goToNextDay = function() { // Made global for onclick in HTML
+            currentFilterDate.setDate(currentFilterDate.getDate() + 1);
+            updateCurrentDateDisplay();
+            filterAndRenderTasks();
+            filterAndRenderNotes();
+        };
+
+        /**
+         * Resets the currentFilterDate to today and re-renders data.
+         */
+        window.goToToday = function() { // Made global for onclick in HTML
+            currentFilterDate = new Date();
+            updateCurrentDateDisplay();
+            filterAndRenderTasks();
+            filterAndRenderNotes();
+        };
+
+        // Initialize the page once the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCurrentDateDisplay(); // Initial date update display
+
+            // Apply dark mode if previously enabled
+            if (localStorage.getItem('darkMode') === 'true') {
+                document.body.classList.add('dark-mode');
+                // Ensure the icon updates correctly on page load
+                const moonIcon = document.querySelector('.sidebar-item i.fa-moon');
+                if (moonIcon) {
+                    moonIcon.classList.replace('fa-moon', 'fa-sun');
+                }
+            }
+
+            // Start Firebase authentication and data loading
+            initializeAuthAndFirestore();
+        });
+    </script>
     <style>
+        /* Base styles for Cairo font and smooth transitions */
+        * {
+            font-family: 'Cairo', sans-serif;
+            box-sizing: border-box; /* Ensure consistent box model */
+        }
         :root {
-            --primary-color: #e30613;
-            --primary-dark: #c00510;
+            --primary-color: #e30613; /* Original red */
             --secondary-color: #333;
-            --light-color: #f8f9fa;
-            --dark-color: #212529;
-            --success-color: #28a745;
-            --warning-color: #ffc107;
-            --info-color: #17a2b8;
+            --pending-color: #f59e0b;
+            --in-progress-color: #3b82f6;
+            --completed-color: #10b981;
+            --text-color-light: #4a5568;
+            --text-color-dark: #f8f9fa;
+            --bg-light: #f8f9fa;
+            --bg-dark: #1a202c;
+            --card-bg-light: #ffffff;
+            --card-bg-dark: #2d3748;
+            --border-color-light: #e2e8f0;
+            --border-color-dark: #4a5568;
         }
 
         body {
-            font-family: 'Cairo', sans-serif;
-            background-color: #f5f5f5;
-            color: var(--dark-color);
+            background-color: var(--bg-light);
+            color: var(--text-color-light);
+            transition: background-color 0.3s ease, color 0.3s ease;
             min-height: 100vh;
             display: flex;
-            flex-direction: column;
+            flex-direction: column; /* Ensure content stacks vertically */
         }
 
+        /* Dark Mode styles */
+        .dark-mode {
+            background-color: var(--bg-dark);
+            color: var(--text-color-dark);
+        }
+        .dark-mode .bg-white {
+            background-color: var(--card-bg-dark);
+            color: var(--text-color-dark);
+            border-color: var(--border-color-dark);
+        }
+        .dark-mode .bg-gray-100 {
+            background-color: var(--bg-dark);
+            color: var(--text-color-dark);
+        }
+        .dark-mode .text-gray-700,
+        .dark-mode .text-gray-800 {
+            color: var(--text-color-dark);
+        }
+        .dark-mode .border {
+            border-color: var(--border-color-dark);
+        }
+        .dark-mode input, .dark-mode select {
+            background-color: #4a5568;
+            color: var(--text-color-dark);
+            border-color: var(--border-color-dark);
+        }
+        .dark-mode input:focus, .dark-mode select:focus {
+            border-color: var(--primary-color); /* Maintain highlight */
+        }
+        .dark-mode .sidebar {
+            background-color: #2d3748;
+            box-shadow: -2px 0 8px rgba(0,0,0,0.3);
+        }
+        .dark-mode .sidebar-item:hover {
+            background-color: #4a5568;
+        }
+        .dark-mode .status-pending {
+            filter: brightness(1.2); /* Slightly brighter for dark mode contrast */
+        }
+        .dark-mode .status-in-progress {
+            filter: brightness(1.2);
+        }
+        .dark-mode .status-completed {
+            filter: brightness(1.2);
+        }
+
+        /* Navbar Styling */
         .navbar {
-            background-color: var(--primary-color) !important;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .navbar-brand {
-            font-weight: 700;
-            font-size: 1.5rem;
-            display: flex;
-            align-items: center;
-        }
-
-        .nav-link {
-            font-weight: 600;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            transition: all 0.3s ease;
-        }
-
-        .nav-link:hover, .nav-link.active {
-            background-color: rgba(255, 255, 255, 0.2);
-        }
-
-        .card {
-            border: none;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            transition: transform 0.3s ease;
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-        }
-
-        .card-header {
             background-color: var(--primary-color);
             color: white;
-            border-bottom: none;
-            font-weight: 700;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            padding: 1rem 1.5rem; /* Adjusted padding */
+        }
+        .navbar img {
+            border-radius: 8px; /* Slightly rounded logo */
         }
 
-        .task-item {
+        /* Sidebar Styling */
+        .sidebar {
+            width: 70px;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            right: 0;
+            background-color: var(--card-bg-light);
+            transition: width 0.3s ease-in-out, background-color 0.3s ease;
+            z-index: 1000;
+            box-shadow: -4px 0 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            padding-top: 1rem;
+        }
+        .sidebar:hover {
+            width: 200px;
+        }
+        .sidebar-item {
+            padding: 18px 15px; /* More padding */
             display: flex;
             align-items: center;
-            padding: 12px 15px;
-            margin-bottom: 10px;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-            transition: all 0.3s ease;
-            border-left: 4px solid var(--primary-color);
             cursor: pointer;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            white-space: nowrap;
+            overflow: hidden;
+            border-radius: 8px; /* Rounded items */
+            margin: 5px 10px; /* Spacing between items */
+        }
+        .sidebar-item:hover {
+            background-color: var(--border-color-light);
+            color: var(--primary-color); /* Highlight text on hover */
+        }
+        .sidebar-item i {
+            margin-left: 15px; /* More space for icon */
+            font-size: 1.4rem; /* Slightly larger icons */
+            color: var(--primary-color); /* Consistent icon color */
+            transition: color 0.3s ease;
+        }
+        .sidebar-item:hover i {
+            color: var(--primary-color); /* Keep primary color on hover */
+        }
+        .sidebar-text {
+            display: none;
+            font-weight: 600; /* Bolder text */
+        }
+        .sidebar:hover .sidebar-text {
+            display: inline;
         }
 
-        .task-item:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+        /* Main Content Area */
+        .main-content {
+            margin-right: 70px;
+            transition: margin-right 0.3s ease-in-out;
+            min-height: calc(100vh - 80px); /* Adjust height for navbar */
+            overflow-y: auto;
+            flex-grow: 1; /* Allow main content to grow */
+        }
+        .sidebar:hover ~ .main-content {
+            margin-right: 200px;
         }
 
-        .task-text {
-            flex-grow: 1;
-            margin: 0 12px;
-            font-weight: 500;
+        /* Task/Note Card Styling */
+        .task-card, .bg-white.p-6.rounded-lg.shadow-lg { /* Apply styles to both */
+            transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
+            border: 1px solid var(--border-color-light);
+            border-radius: 12px; /* More rounded corners */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* Softer shadow */
+        }
+        .task-card:hover {
+            transform: translateY(-5px); /* More pronounced lift */
+            box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.1); /* Stronger shadow on hover */
         }
 
-        .task-actions {
-            opacity: 0;
+        /* Status Badges */
+        .status-pending { background-color: var(--pending-color); color: white; }
+        .status-in-progress { background-color: var(--in-progress-color); color: white; }
+        .status-completed { background-color: var(--completed-color); color: white; }
+        .status-pending, .status-in-progress, .status-completed {
+            padding: 0.4rem 0.8rem;
+            border-radius: 9999px; /* Fully rounded */
+            font-size: 0.75rem;
+            font-weight: 700; /* Bold status text */
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            height: 10px; /* Slightly thicker */
+            border-radius: 5px;
+            background-color: #e5e7eb;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: var(--primary-color);
+            transition: width 0.5s ease;
+            border-radius: 5px; /* Match outer border radius */
+        }
+
+        /* Form Inputs and Buttons */
+        input[type="text"], input[type="date"], select {
+            border-radius: 8px; /* Rounded inputs */
+            padding: 0.75rem 1rem; /* More padding */
+            border: 1px solid var(--border-color-light);
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        input[type="text"]:focus, input[type="date"]:focus, select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(227, 6, 19, 0.2); /* Soft focus ring */
+        }
+
+        button[type="submit"], .px-4.py-2.bg-blue-600, .px-4.py-2.bg-gray-300 {
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem; /* More padding */
+            font-weight: 600; /* Bolder text */
+            transition: background-color 0.3s ease, transform 0.1s ease, box-shadow 0.3s ease;
+        }
+        button[type="submit"]:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 128, 0, 0.2); /* Green shadow for add */
+        }
+        .bg-blue-600:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2); /* Blue shadow for save */
+        }
+        .bg-gray-300:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(107, 114, 128, 0.2); /* Gray shadow for cancel */
+        }
+
+        /* Modal Styling */
+        .modal {
+            background-color: rgba(0, 0, 0, 0.6); /* Darker overlay */
             transition: opacity 0.3s ease;
         }
-
-        .task-item:hover .task-actions {
-            opacity: 1;
+        .modal > div {
+            border-radius: 16px; /* Very rounded modal */
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.25); /* Stronger modal shadow */
+            animation: fadeInScale 0.3s ease-out; /* Add a subtle scale animation */
+        }
+        @keyframes fadeInScale {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
         }
 
-        .task-status {
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
-            margin-left: 10px;
-            min-width: 90px;
-            text-align: center;
-        }
-
-        .status-pending {
-            background-color: #fff3cd;
-            color: #856404;
-        }
-
-        .status-in-progress {
-            background-color: #cce5ff;
-            color: #004085;
-        }
-
-        .status-completed {
-            background-color: #d4edda;
-            color: #155724;
-        }
-
-        .note-item {
-            background-color: #f8f9fa;
-            border-left: 4px solid var(--primary-color);
-            padding: 12px;
-            margin-bottom: 12px;
-            border-radius: 0 8px 8px 0;
-            position: relative;
-            transition: all 0.3s ease;
-        }
-
-        .note-item:hover {
-            background-color: #e9ecef;
-        }
-
-        .btn-primary {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
-
-        .btn-primary:hover {
-            background-color: var(--primary-dark);
-            border-color: var(--primary-dark);
-        }
-
-        .btn-outline-primary {
-            color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
-
-        .btn-outline-primary:hover {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-            color: white;
-        }
-
-        .progress {
-            height: 12px;
-            border-radius: 6px;
-            background-color: #e9ecef;
-        }
-
-        .progress-bar {
-            background-color: var(--primary-color);
-            transition: width 0.6s ease;
-        }
-
-        .form-control, .form-select {
-            border-radius: 8px;
-            padding: 10px 15px;
-            border: 1px solid #ddd;
-        }
-
-        .form-control:focus, .form-select:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 0.25rem rgba(227, 6, 19, 0.25);
-        }
-
-        .logo {
-            height: 40px;
-            margin-right: 10px;
-        }
-
-        .footer {
-            background-color: var(--dark-color);
-            color: white;
-            padding: 20px 0;
-            margin-top: auto;
-        }
-
-        .date-navigation {
-            display: flex;
-            align-items: center;
-        }
-
-        .date-display {
-            background-color: white;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-weight: bold;
-            margin: 0 10px;
-        }
-
-        /* تعديلات RTL */
-        [dir="rtl"] .me-2 {
-            margin-left: 0.5rem !important;
-            margin-right: 0 !important;
-        }
-
-        [dir="rtl"] .ms-2 {
-            margin-right: 0.5rem !important;
-            margin-left: 0 !important;
-        }
-
-        /* تحسينات للواجهة على الأجهزة الصغيرة */
-        @media (max-width: 768px) {
-            .navbar-brand {
-                font-size: 1.2rem;
-            }
-            
-            .task-item {
-                flex-wrap: wrap;
-                padding: 10px;
-            }
-            
-            .task-status {
-                margin: 5px 0;
-                width: 100%;
-            }
-            
-            .task-actions {
-                opacity: 1;
-                margin-top: 5px;
-            }
-        }
-
-        /* تأثيرات للتفاعل */
-        .btn {
-            transition: all 0.3s ease;
-        }
-
+        /* Animations */
         .fade-in {
-            animation: fadeIn 0.5s ease-in;
+            animation: fadeIn 0.5s ease-out forwards;
         }
-
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* تحسينات للواجهة */
-        .empty-state {
-            text-align: center;
-            padding: 30px;
-            color: #6c757d;
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+                right: auto;
+                top: auto;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                display: flex;
+                flex-direction: row; /* Horizontal on small screens */
+                justify-content: space-around;
+                flex-wrap: wrap;
+                padding: 10px 0;
+                border-radius: 0; /* Remove border-radius for full width */
+                margin-bottom: 10px; /* Space below sidebar */
+            }
+            .sidebar:hover {
+                width: 100%; /* No width change on hover */
+            }
+            .sidebar-item {
+                flex: 1;
+                text-align: center;
+                padding: 10px 5px;
+                flex-direction: column; /* Stack icon and text */
+                margin: 5px; /* Adjust spacing */
+            }
+            .sidebar-item i {
+                margin: 0 0 5px 0; /* Adjust margin for stacking */
+            }
+            .sidebar-text {
+                display: block !important; /* Always show text on small screens */
+                font-size: 0.8rem;
+            }
+            .main-content {
+                margin-right: 0;
+                margin-top: 0; /* No margin-top needed if sidebar is relative */
+                padding-top: 0; /* Adjust padding if sidebar is above */
+                height: auto; /* Allow content to dictate height */
+                min-height: calc(100vh - 100px); /* Adjust for small screen navbar + simplified sidebar */
+            }
+            .sidebar:hover ~ .main-content {
+                margin-right: 0;
+            }
+            .navbar .text-xl {
+                font-size: 1.1rem;
+            }
+            .navbar img {
+                height: 30px; /* Smaller logo */
+            }
+            .navbar .hidden.md\\:block {
+                display: none; /* Hide full title on small screens */
+            }
+            .navbar .flex-col {
+                flex-direction: column;
+                align-items: flex-end;
+            }
+            /* Responsive form elements */
+            #taskForm, #noteForm {
+                flex-direction: column;
+            }
+            #taskInput, #noteInput, #taskStatus, #noteDate {
+                width: 100%;
+                margin-left: 0 !important; /* Override ml-2 on small screens */
+                margin-bottom: 0.75rem; /* Space between stacked inputs */
+            }
+            button[type="submit"] {
+                width: 100%;
+                margin-left: 0 !important; /* Override ml-2 on small screens */
+            }
+            .flex-wrap .mb-4.md\:mb-0 {
+                margin-bottom: 1rem !important; /* Adjust spacing for stacked items */
+            }
         }
-
-        .empty-state i {
-            font-size: 3rem;
-            margin-bottom: 15px;
-            color: #dee2e6;
-        }
-
-        .loading-spinner {
-            display: inline-block;
-            width: 2rem;
-            height: 2rem;
-            vertical-align: text-bottom;
-            border: 0.25em solid currentColor;
-            border-right-color: transparent;
-            border-radius: 50%;
-            animation: spinner-border .75s linear infinite;
-        }
-
-        @keyframes spinner-border {
-            to { transform: rotate(360deg); }
-        }
-
-        #error-message {
-            display: none;
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            max-width: 80%;
-            z-index: 1000;
-        }
-
-        #connection-status {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            width: 15px;
-            height: 15px;
-            border-radius: 50%;
-            background-color: #ccc;
-            z-index: 1000;
-        }
-
-        .online { background-color: #28a745; }
-        .offline { background-color: #dc3545; }
     </style>
 </head>
-<body>
-    <div id="connection-status" class="offline"></div>
-    
-    <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container">
-            <a class="navbar-brand" href="#">
-                <img src="https://via.placeholder.com/150x50?text=SYM+Algeria" alt="SYM Algeria" class="logo">
-                نظام إدارة المهام
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="#">
-                            <i class="fas fa-calendar-day me-1"></i> المهام اليومية
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">
-                            <i class="fas fa-calendar-week me-1"></i> المواعيد
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">
-                            <i class="fas fa-boxes me-1"></i> المخزون
-                        </a>
-                    </li>
-                </ul>
-                <div class="d-flex">
-                    <button id="logoutBtn" class="btn btn-outline-light">
-                        <i class="fas fa-sign-out-alt me-1"></i> تسجيل الخروج
-                    </button>
+<body class="bg-gray-100">
+    <!-- الشريط الجانبي -->
+    <div class="sidebar">
+        <div class="sidebar-item" onclick="toggleSection('tasksSection')">
+            <i class="fas fa-tasks"></i>
+            <span class="sidebar-text">المهام اليومية</span>
+        </div>
+        <div class="sidebar-item" onclick="toggleSection('notesSection')">
+            <i class="fas fa-sticky-note"></i>
+            <span class="sidebar-text">الملاحظات</span>
+        </div>
+        <div class="sidebar-item" onclick="toggleDarkMode()">
+            <i class="fas fa-moon"></i>
+            <span class="sidebar-text">الوضع الليلي</span>
+        </div>
+    </div>
+
+    <!-- المحتوى الرئيسي -->
+    <div class="main-content">
+        <!-- شريط التنقل -->
+        <nav class="navbar p-4 text-white shadow-lg">
+            <div class="container mx-auto flex justify-between items-center flex-wrap">
+                <div class="flex items-center space-x-2">
+                    <img src="https://brandlogos.net/wp-content/uploads/2022/10/sym_-_sanyang_motor-logo_brandlogos.net_mre4v.png" alt="Logo" class="h-12 w-auto">
+                    <span class="text-xl font-bold hidden md:block">نظام إدارة المهام والملاحظات - SYM Algeria</span>
+                </div>
+                <div class="flex flex-col items-end">
+                    <span id="userIdDisplay" class="text-white text-xs md:text-sm mt-1"></span>
                 </div>
             </div>
-        </div>
-    </nav>
+        </nav>
 
-    <div class="container my-5" id="main-app">
-        <div class="row">
-            <div class="col-lg-8 mx-auto">
-                <div class="card shadow">
-                    <div class="card-header">
-                        <div class="d-flex justify-content-between align-items-center flex-wrap">
-                            <h4 class="mb-0">
-                                <i class="fas fa-list-check me-2"></i>قائمة المهام اليومية
-                            </h4>
-                            <div class="date-navigation mt-2 mt-md-0">
-                                <button id="prevDayBtn" class="btn btn-sm btn-light">
-                                    <i class="fas fa-arrow-right"></i> اليوم السابق
-                                </button>
-                                <div class="date-display" id="currentDateDisplay"></div>
-                                <button id="nextDayBtn" class="btn btn-sm btn-light">
-                                    اليوم التالي <i class="fas fa-arrow-left"></i>
-                                </button>
+        <!-- المحتوى الديناميكي -->
+        <div class="container mx-auto p-6">
+            <!-- تاريخ التصفية وأزرار التنقل -->
+            <div class="flex justify-center items-center mb-6 bg-white p-4 rounded-lg shadow-md">
+                <button onclick="goToPreviousDay()" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full mx-2 transition-all duration-300 transform hover:scale-105" aria-label="اليوم السابق">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <span id="currentFilterDateDisplay" class="text-xl font-bold text-gray-800"></span>
+                <button onclick="goToNextDay()" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full mx-2 transition-all duration-300 transform hover:scale-105" aria-label="اليوم التالي">
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+                <button onclick="goToToday()" class="bg-green-500 hover:bg-green-600 text-white p-2 px-4 rounded-full mx-2 transition-all duration-300 transform hover:scale-105">
+                    اليوم
+                </button>
+            </div>
+
+            <!-- قسم المهام اليومية -->
+            <div id="tasksSection">
+                <div class="bg-white p-6 rounded-lg shadow-lg mb-6">
+                    <div class="flex flex-wrap justify-between items-center mb-6">
+                        <h2 class="text-xl font-semibold text-gray-700 mb-4 md:mb-0">
+                            <i class="fas fa-tasks ml-2"></i> المهام اليومية
+                        </h2>
+                        <div class="flex items-center w-full md:w-auto justify-end">
+                            <span class="ml-2 md:mr-2">نسبة الإنجاز:</span>
+                            <div class="w-24 md:w-32 bg-gray-200 rounded-full h-2.5">
+                                <div id="progressBar" class="progress-fill h-2.5 rounded-full" style="width: 0%"></div>
                             </div>
+                            <span id="progressPercentage" class="ml-2 md:mr-2 font-bold">0%</span>
                         </div>
                     </div>
-                    <div class="card-body">
-                        <div class="input-group mb-4">
-                            <input type="text" id="newTaskInput" class="form-control" placeholder="أضف مهمة جديدة..." autocomplete="off">
-                            <button class="btn btn-primary" id="addTaskBtn">
-                                <i class="fas fa-plus me-1"></i> إضافة
-                            </button>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <textarea id="newNoteInput" class="form-control" placeholder="أضف ملاحظة..." rows="3" autocomplete="off"></textarea>
-                            <button class="btn btn-secondary mt-2" id="addNoteBtn">
-                                <i class="fas fa-note-sticky me-1"></i> حفظ الملاحظة
-                            </button>
-                        </div>
-                        
-                        <div id="notesSection" class="mb-4 p-3 bg-light rounded">
-                            <h5><i class="fas fa-notes me-2"></i>الملاحظات</h5>
-                            <div id="notesList">
-                                <div class="text-center py-3">
-                                    <div class="loading-spinner text-primary"></div>
-                                    <p class="mt-2">جاري تحميل الملاحظات...</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div id="tasksList">
-                            <div class="text-center py-3">
-                                <div class="loading-spinner text-primary"></div>
-                                <p class="mt-2">جاري تحميل المهام...</p>
-                            </div>
-                        </div>
-                        
-                        <div class="mt-4">
-                            <div class="progress">
-                                <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%"></div>
-                            </div>
-                            <small class="text-muted" id="progressText">0% مكتمل (0 من 0 مهمة)</small>
-                        </div>
+
+                    <!-- نموذج إضافة مهمة جديدة -->
+                    <form id="taskForm" class="mb-6 flex flex-wrap items-center">
+                        <input type="text" id="taskInput" placeholder="أدخل المهمة الجديدة..." class="flex-grow p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2 md:mb-0 md:ml-2 w-full md:w-auto" required>
+                        <select id="taskStatus" class="p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2 md:mb-0 md:ml-2 w-full md:w-auto">
+                            <option value="pending">قيد الانتظار</option>
+                            <option value="in-progress">قيد التنفيذ</option>
+                            <option value="completed">مكتملة</option>
+                        </select>
+                        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white p-3 rounded transition w-full md:w-auto">
+                            <i class="fas fa-plus ml-2"></i> إضافة
+                        </button>
+                    </form>
+
+                    <!-- قائمة المهام -->
+                    <div id="tasksList" class="space-y-3">
+                        <!-- سيتم ملؤه ديناميكيا -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- قسم الملاحظات -->
+            <div id="notesSection" class="hidden">
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h2 class="text-xl font-semibold text-gray-700 mb-6">
+                        <i class="fas fa-sticky-note ml-2"></i> الملاحظات
+                    </h2>
+
+                    <!-- نموذج إضافة ملاحظة جديدة -->
+                    <form id="noteForm" class="mb-6 flex flex-wrap items-center">
+                        <input type="text" id="noteInput" placeholder="أدخل ملاحظة جديدة..." class="flex-grow p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2 md:mb-0 md:ml-2 w-full md:w-auto" required>
+                        <input type="date" id="noteDate" class="p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2 md:mb-0 md:ml-2 w-full md:w-auto">
+                        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white p-3 rounded transition w-full md:w-auto">
+                            <i class="fas fa-plus ml-2"></i> إضافة
+                        </button>
+                    </form>
+
+                    <!-- قائمة الملاحظات -->
+                    <div id="notesList" class="space-y-3">
+                        <!-- سيتم ملؤه ديناميكيا -->
                     </div>
                 </div>
             </div>
@@ -417,469 +943,31 @@
     </div>
 
     <!-- نافذة تعديل المهمة -->
-    <div class="modal fade" id="editTaskModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title">تعديل المهمة</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div id="editTaskModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+            <h3 class="text-lg font-semibold mb-4">تعديل المهمة</h3>
+            <form id="editTaskForm">
+                <input type="hidden" id="editTaskId">
+                <div class="mb-4">
+                    <input type="text" id="editTaskText" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                 </div>
-                <div class="modal-body">
-                    <input type="hidden" id="editTaskId">
-                    <input type="text" id="editTaskInput" class="form-control mb-3" autocomplete="off">
-                    <select id="editTaskStatus" class="form-select">
-                        <option value="pending">قيد الإنتظار</option>
+                <div class="mb-4">
+                    <select id="editTaskStatus" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="pending">قيد الانتظار</option>
                         <option value="in-progress">قيد التنفيذ</option>
                         <option value="completed">مكتملة</option>
                     </select>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="button" id="saveTaskBtn" class="btn btn-primary">حفظ التغييرات</button>
-                    <button type="button" id="deleteTaskBtn" class="btn btn-danger">حذف المهمة</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="error-message" class="alert alert-danger text-center">
-        <i class="fas fa-exclamation-triangle me-2"></i>
-        <span id="error-text"></span>
-        <button class="btn btn-sm btn-outline-danger ms-3" onclick="location.reload()">
-            <i class="fas fa-sync-alt me-1"></i> إعادة المحاولة
-        </button>
-    </div>
-
-    <footer class="footer">
-        <div class="container text-center">
-            <p class="mb-0">جميع الحقوق محفوظة &copy; <span id="currentYear"></span> SYM Algeria</p>
-        </div>
-    </footer>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
-    <script>
-        // 1. تهيئة Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyDvHZPvH5q1qX5Q5Zv5X5Zv5X5Zv5X5Zv5",
-            authDomain: "commercial-3ef19.firebaseapp.com",
-            databaseURL: "https://commercial-3ef19-default-rtdb.firebaseio.com",
-            projectId: "commercial-3ef19",
-            storageBucket: "commercial-3ef19.appspot.com",
-            messagingSenderId: "1234567890",
-            appId: "1:1234567890:web:abcdef1234567890"
-        };
-
-        // Initialize Firebase
-        const app = firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-        const auth = firebase.auth();
-
-        // 2. متغيرات التطبيق
-        let currentDate = new Date();
-        let currentTaskId = null;
-        let currentTasks = [];
-        let currentNotes = [];
-
-        // 3. وظائف مساعدة
-        function formatDisplayDate(date) {
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            return date.toLocaleDateString('ar-EG', options);
-        }
-        
-        function formatDatabaseDate(date) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        }
-
-        function showError(message) {
-            const errorMessage = document.getElementById('error-message');
-            document.getElementById('error-text').textContent = message;
-            errorMessage.style.display = 'block';
-            document.getElementById('main-app').style.opacity = '0.5';
-        }
-
-        function hideError() {
-            document.getElementById('error-message').style.display = 'none';
-            document.getElementById('main-app').style.opacity = '1';
-        }
-
-        function updateConnectionStatus(connected) {
-            const statusElement = document.getElementById('connection-status');
-            statusElement.className = connected ? 'online' : 'offline';
-        }
-
-        function createTaskElement(task) {
-            const taskElement = document.createElement('div');
-            taskElement.className = 'task-item fade-in';
-            taskElement.dataset.id = task.id;
-            
-            const statusClass = {
-                'pending': 'status-pending',
-                'in-progress': 'status-in-progress',
-                'completed': 'status-completed'
-            }[task.status] || 'status-pending';
-            
-            const statusText = {
-                'pending': 'قيد الإنتظار',
-                'in-progress': 'قيد التنفيذ',
-                'completed': 'مكتملة'
-            }[task.status] || 'قيد الإنتظار';
-            
-            taskElement.innerHTML = `
-                <input type="checkbox" ${task.status === 'completed' ? 'checked' : ''} class="form-check-input me-2">
-                <div class="task-text">${task.text}</div>
-                <div class="task-status ${statusClass}">${statusText}</div>
-                <div class="task-actions">
-                    <button class="btn btn-sm btn-outline-primary edit-task">
-                        <i class="fas fa-edit"></i>
+                <div class="flex justify-end space-x-2">
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">
+                        إلغاء
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                        حفظ التعديلات
                     </button>
                 </div>
-            `;
-            
-            // إضافة أحداث النقر
-            taskElement.querySelector('.edit-task').addEventListener('click', (e) => {
-                e.stopPropagation();
-                openEditModal(task);
-            });
-            
-            taskElement.querySelector('input[type="checkbox"]').addEventListener('change', (e) => {
-                updateTaskStatus(task.id, e.target.checked ? 'completed' : 'pending');
-            });
-            
-            taskElement.addEventListener('click', () => {
-                openEditModal(task);
-            });
-            
-            return taskElement;
-        }
-
-        function openEditModal(task) {
-            currentTaskId = task.id;
-            document.getElementById('editTaskId').value = task.id;
-            document.getElementById('editTaskInput').value = task.text;
-            document.getElementById('editTaskStatus').value = task.status;
-            
-            const modal = new bootstrap.Modal(document.getElementById('editTaskModal'));
-            modal.show();
-        }
-
-        function showEmptyTasksState() {
-            tasksList.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-tasks"></i>
-                    <h5>لا توجد مهام لهذا اليوم</h5>
-                    <p class="text-muted">ابدأ بإضافة مهام جديدة باستخدام حقل الإدخال بالأعلى</p>
-                </div>
-            `;
-        }
-
-        function showEmptyNotesState() {
-            notesList.innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-sticky-note"></i>
-                    <h5>لا توجد ملاحظات</h5>
-                    <p class="text-muted">يمكنك إضافة ملاحظات جديدة باستخدام حقل الملاحظات بالأعلى</p>
-                </div>
-            `;
-        }
-
-        // 4. وظائف إدارة المهام
-        function addTask(taskText) {
-            if (!taskText.trim()) return;
-            
-            const dateKey = formatDatabaseDate(currentDate);
-            const userId = auth.currentUser?.uid;
-            
-            if (!userId) {
-                showError('يجب تسجيل الدخول أولاً');
-                return;
-            }
-            
-            const newTaskRef = database.ref(`users/${userId}/tasks/${dateKey}`).push();
-            newTaskRef.set({
-                text: taskText,
-                status: 'pending',
-                createdAt: firebase.database.ServerValue.TIMESTAMP
-            }).then(() => {
-                document.getElementById('newTaskInput').value = '';
-            }).catch((error) => {
-                console.error('Error adding task:', error);
-                showError('حدث خطأ أثناء إضافة المهمة');
-            });
-        }
-
-        function updateTask(taskId, newText, newStatus) {
-            const dateKey = formatDatabaseDate(currentDate);
-            const userId = auth.currentUser?.uid;
-            
-            if (!userId) return;
-            
-            database.ref(`users/${userId}/tasks/${dateKey}/${taskId}`).update({
-                text: newText,
-                status: newStatus
-            }).catch((error) => {
-                console.error('Error updating task:', error);
-                showError('حدث خطأ أثناء تحديث المهمة');
-            });
-        }
-
-        function updateTaskStatus(taskId, newStatus) {
-            const dateKey = formatDatabaseDate(currentDate);
-            const userId = auth.currentUser?.uid;
-            
-            if (!userId) return;
-            
-            database.ref(`users/${userId}/tasks/${dateKey}/${taskId}`).update({
-                status: newStatus
-            }).catch((error) => {
-                console.error('Error updating task status:', error);
-                showError('حدث خطأ أثناء تحديث حالة المهمة');
-            });
-        }
-
-        function deleteTask(taskId) {
-            const dateKey = formatDatabaseDate(currentDate);
-            const userId = auth.currentUser?.uid;
-            
-            if (!userId) return;
-            
-            database.ref(`users/${userId}/tasks/${dateKey}/${taskId}`).remove()
-                .catch((error) => {
-                    console.error('Error deleting task:', error);
-                    showError('حدث خطأ أثناء حذف المهمة');
-                });
-        }
-
-        // 5. وظائف إدارة الملاحظات
-        function addNote(noteText) {
-            if (!noteText.trim()) return;
-            
-            const dateKey = formatDatabaseDate(currentDate);
-            const userId = auth.currentUser?.uid;
-            
-            if (!userId) {
-                showError('يجب تسجيل الدخول أولاً');
-                return;
-            }
-            
-            const newNoteRef = database.ref(`users/${userId}/notes/${dateKey}`).push();
-            newNoteRef.set({
-                text: noteText,
-                createdAt: firebase.database.ServerValue.TIMESTAMP
-            }).then(() => {
-                document.getElementById('newNoteInput').value = '';
-            }).catch((error) => {
-                console.error('Error adding note:', error);
-                showError('حدث خطأ أثناء إضافة الملاحظة');
-            });
-        }
-
-        // 6. تحميل البيانات
-        function loadTasks() {
-            const dateKey = formatDatabaseDate(currentDate);
-            const userId = auth.currentUser?.uid;
-            
-            if (!userId) return;
-            
-            tasksList.innerHTML = `
-                <div class="text-center py-3">
-                    <div class="loading-spinner text-primary"></div>
-                    <p class="mt-2">جاري تحميل المهام...</p>
-                </div>
-            `;
-            
-            database.ref(`users/${userId}/tasks/${dateKey}`).on('value', (snapshot) => {
-                tasksList.innerHTML = '';
-                currentTasks = [];
-                
-                if (snapshot.exists()) {
-                    const tasksData = snapshot.val();
-                    currentTasks = Object.entries(tasksData).map(([id, task]) => ({ id, ...task }));
-                    
-                    // حساب نسبة الإنجاز
-                    const completedTasks = currentTasks.filter(task => task.status === 'completed').length;
-                    const totalTasks = currentTasks.length;
-                    const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-                    
-                    progressBar.style.width = `${completionPercentage}%`;
-                    progressText.textContent = `${completionPercentage}% مكتمل (${completedTasks} من ${totalTasks} مهمة)`;
-                    
-                    // عرض المهام
-                    if (currentTasks.length > 0) {
-                        currentTasks.forEach(task => {
-                            const taskElement = createTaskElement(task);
-                            tasksList.appendChild(taskElement);
-                        });
-                    } else {
-                        showEmptyTasksState();
-                    }
-                } else {
-                    progressBar.style.width = '0%';
-                    progressText.textContent = '0% مكتمل (0 من 0 مهمة)';
-                    showEmptyTasksState();
-                }
-            }, (error) => {
-                console.error('Error loading tasks:', error);
-                showError('حدث خطأ أثناء تحميل المهام. يرجى المحاولة مرة أخرى.');
-            });
-        }
-
-        function loadNotes() {
-            const dateKey = formatDatabaseDate(currentDate);
-            const userId = auth.currentUser?.uid;
-            
-            if (!userId) return;
-            
-            notesList.innerHTML = `
-                <div class="text-center py-3">
-                    <div class="loading-spinner text-primary"></div>
-                    <p class="mt-2">جاري تحميل الملاحظات...</p>
-                </div>
-            `;
-            
-            database.ref(`users/${userId}/notes/${dateKey}`).on('value', (snapshot) => {
-                notesList.innerHTML = '';
-                currentNotes = [];
-                
-                if (snapshot.exists()) {
-                    const notesData = snapshot.val();
-                    currentNotes = Object.entries(notesData).map(([id, note]) => ({ id, ...note }));
-                    
-                    if (currentNotes.length > 0) {
-                        currentNotes.forEach(note => {
-                            const noteElement = document.createElement('div');
-                            noteElement.className = 'note-item fade-in';
-                            noteElement.innerHTML = `
-                                <p>${note.text}</p>
-                                <small class="text-muted">${new Date(note.createdAt).toLocaleString('ar-EG')}</small>
-                            `;
-                            notesList.appendChild(noteElement);
-                        });
-                    } else {
-                        showEmptyNotesState();
-                    }
-                } else {
-                    showEmptyNotesState();
-                }
-            }, (error) => {
-                console.error('Error loading notes:', error);
-                showError('حدث خطأ أثناء تحميل الملاحظات. يرجى المحاولة مرة أخرى.');
-            });
-        }
-
-        // 7. التحقق من الاتصال
-        function checkConnection() {
-            // التحقق من اتصال الإنترنت
-            if (!navigator.onLine) {
-                showError('لا يوجد اتصال بالإنترنت. يرجى التحقق من اتصالك ثم إعادة تحميل الصفحة.');
-                updateConnectionStatus(false);
-                return false;
-            }
-
-            // التحقق من اتصال Firebase
-            const databaseRef = database.ref('.info/connected');
-            databaseRef.on('value', (snap) => {
-                if (snap.val() === true) {
-                    updateConnectionStatus(true);
-                    hideError();
-                } else {
-                    updateConnectionStatus(false);
-                    showError('لا يوجد اتصال بخادم البيانات. يرجى المحاولة لاحقًا.');
-                }
-            });
-
-            return true;
-        }
-
-        // 8. تهيئة التطبيق
-        function initApp() {
-            // تعيين سنة حقوق النشر
-            document.getElementById('currentYear').textContent = new Date().getFullYear();
-            
-            // تحديث عرض التاريخ والبيانات
-            function updateDateDisplay() {
-                document.getElementById('currentDateDisplay').textContent = formatDisplayDate(currentDate);
-                loadTasks();
-                loadNotes();
-            }
-            
-            // أحداث الأزرار
-            document.getElementById('addTaskBtn').addEventListener('click', () => {
-                const taskText = document.getElementById('newTaskInput').value;
-                addTask(taskText);
-            });
-            
-            document.getElementById('newTaskInput').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    const taskText = document.getElementById('newTaskInput').value;
-                    addTask(taskText);
-                }
-            });
-            
-            document.getElementById('addNoteBtn').addEventListener('click', () => {
-                const noteText = document.getElementById('newNoteInput').value;
-                addNote(noteText);
-            });
-            
-            document.getElementById('saveTaskBtn').addEventListener('click', () => {
-                const newText = document.getElementById('editTaskInput').value;
-                const newStatus = document.getElementById('editTaskStatus').value;
-                updateTask(currentTaskId, newText, newStatus);
-                bootstrap.Modal.getInstance(document.getElementById('editTaskModal')).hide();
-            });
-            
-            document.getElementById('deleteTaskBtn').addEventListener('click', () => {
-                if (confirm('هل أنت متأكد من حذف هذه المهمة؟')) {
-                    deleteTask(currentTaskId);
-                    bootstrap.Modal.getInstance(document.getElementById('editTaskModal')).hide();
-                }
-            });
-            
-            document.getElementById('prevDayBtn').addEventListener('click', () => {
-                currentDate.setDate(currentDate.getDate() - 1);
-                updateDateDisplay();
-            });
-            
-            document.getElementById('nextDayBtn').addEventListener('click', () => {
-                currentDate.setDate(currentDate.getDate() + 1);
-                updateDateDisplay();
-            });
-            
-            document.getElementById('logoutBtn').addEventListener('click', () => {
-                auth.signOut().then(() => {
-                    window.location.reload();
-                });
-            });
-            
-            // تحديث الواجهة
-            updateDateDisplay();
-            checkConnection();
-        }
-
-        // 9. بدء التطبيق
-        document.addEventListener('DOMContentLoaded', () => {
-            if (checkConnection()) {
-                auth.signInAnonymously()
-                    .then(() => {
-                        console.log("تم الاتصال بنجاح");
-                        hideError();
-                        initApp();
-                    })
-                    .catch((error) => {
-                        console.error("خطأ في الاتصال:", error);
-                        showError(`حدث خطأ في الاتصال: ${error.message || 'يرجى المحاولة لاحقًا'}`);
-                    });
-            }
-        });
-
-        // 10. تحديث حالة الاتصال عند التغيير
-        window.addEventListener('online', checkConnection);
-        window.addEventListener('offline', checkConnection);
-    </script>
+            </form>
+        </div>
+    </div>
 </body>
 </html>
