@@ -3,674 +3,545 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SYM Algeria - تقارير المخزون</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>نظام تسجيل البضائع الناقصة/الزائدة</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <style>
-        :root {
-            --primary-color: #e30613; /* اللون الأحمر لشركة SYM */
-            --secondary-color: #333;
-            --light-color: #f8f9fa;
-            --dark-color: #212529;
-        }
-
         body {
             font-family: 'Cairo', sans-serif;
-            background-color: #f5f5f5;
-            color: var(--dark-color);
+            transition: background-color 0.3s, color 0.3s ease;
+            min-height: 100vh;
         }
-
-        .navbar {
-            background-color: var(--primary-color) !important;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        .dark-mode {
+            background-color: #1a202c;
+            color: #e2e8f0;
         }
-
-        .navbar-brand {
-            font-weight: 700;
-            font-size: 1.5rem;
+        .dark-mode .bg-white { background-color: #2d3748; }
+        .dark-mode .bg-gray-100 { background-color: #1a202c; }
+        .dark-mode .text-gray-700 { color: #e2e8f0; }
+        .dark-mode .bg-blue-600 { background-color: #3182ce; }
+        .dark-mode .bg-green-600 { background-color: #38a169; }
+        .dark-mode .bg-yellow-600 { background-color: #d69e2e; }
+        .dark-mode .bg-indigo-600 { background-color: #667eea; }
+        .positive { background-color: #d1fae5; color: #065f46; }
+        .negative { background-color: #fee2e2; color: #b91c1c; }
+        .under-review { background-color: #fef3c7; color: #92400e; }
+        .completed { background-color: #dbeafe; color: #1e40af; }
+        .navbar { background-color: #1e3a8a; }
+        .search-input { transition: width 0.3s; }
+        .search-input:focus { width: 300px; }
+        .hidden { display: none; }
+        .action-btn {
+            transition: all 0.3s;
+            cursor: pointer;
         }
-
-        .nav-link {
-            font-weight: 600;
-        }
-
-        .card {
-            border: none;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-        }
-
-        .card-header {
-            background-color: var(--primary-color);
-            color: white;
-            border-bottom: none;
-            font-weight: 700;
-        }
-
-        .btn-primary {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
-
-        .btn-primary:hover {
-            background-color: #c00510;
-            border-color: #c00510;
-        }
-
-        .btn-outline-primary {
-            color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
-
-        .btn-outline-primary:hover {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-            color: white;
-        }
-
-        .table th {
-            background-color: var(--primary-color);
-            color: white;
-            text-align: center;
-            vertical-align: middle;
-        }
-
-        .table td {
-            vertical-align: middle;
-        }
-
-        .status-badge {
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-weight: bold;
-            font-size: 14px;
-        }
-
-        .status-corrected {
-            background-color: #d4edda;
-            color: #155724;
-        }
-
-        .status-in-process {
-            background-color: #fff3cd;
-            color: #856404;
-        }
-
-        .status-not-delivered {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-
-        .form-control, .form-select {
-            border-radius: 8px;
-            padding: 10px 15px;
-            border: 1px solid #ddd;
-        }
-
-        .form-control:focus, .form-select:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 0.25rem rgba(227, 6, 19, 0.25);
-        }
-
-        .logo {
-            height: 40px;
-            margin-right: 10px;
-        }
-
-        .footer {
-            background-color: var(--dark-color);
-            color: white;
-            padding: 20px 0;
-            margin-top: 40px;
-        }
-
-        /* تعديلات RTL */
-        [dir="rtl"] .me-2 {
-            margin-left: 0.5rem !important;
-            margin-right: 0 !important;
-        }
-
-        [dir="rtl"] .ms-2 {
-            margin-right: 0.5rem !important;
-            margin-left: 0 !important;
+        .action-btn:hover {
+            transform: translateY(-2px);
         }
     </style>
 </head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-dark">
-        <div class="container">
-            <a class="navbar-brand" href="index.html">
-                <img src="https://via.placeholder.com/150x50?text=SYM+Algeria" alt="SYM Algeria" class="logo">
-                نظام إدارة المخزون
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="index.html">
-                            <i class="fas fa-calendar-day me-1"></i> المهام اليومية
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="appointments.html">
-                            <i class="fas fa-calendar-week me-1"></i> المواعيد
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="inventory.html">
-                            <i class="fas fa-boxes me-1"></i> المخزون
-                        </a>
-                    </li>
-                </ul>
-                <div class="d-flex">
-                    <button id="logoutBtn" class="btn btn-outline-light">
-                        <i class="fas fa-sign-out-alt me-1"></i> تسجيل الخروج
-                    </button>
-                </div>
+<body class="bg-gray-100">
+    <!-- شريط التنقل -->
+    <nav class="navbar p-4 text-white shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <img src="https://brandlogos.net/wp-content/uploads/2022/10/sym_-_sanyang_motor-logo_brandlogos.net_mre4v.png" alt="Logo" class="h-12 w-auto">
+                <span class="text-xl font-bold hidden md:block">نظام تسجيل البضائع الناقصة/الزائدة</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button id="darkModeToggle" class="text-white hover:text-blue-300 p-2 rounded-full">
+                    <i class="fas fa-moon"></i>
+                </button>
             </div>
         </div>
     </nav>
 
-    <div class="container my-5">
-        <div class="row">
-            <div class="col-12">
-                <div class="card shadow">
-                    <div class="card-header">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h4 class="mb-0">
-                                <i class="fas fa-clipboard-list me-2"></i>تقارير المخزون
-                            </h4>
-                            <button class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#addInventoryModal">
-                                <i class="fas fa-plus me-1"></i> إضافة تقرير جديد
-                            </button>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <div class="input-group">
-                                    <input type="text" id="searchInventoryInput" class="form-control" placeholder="بحث عن زبون أو مخزني...">
-                                    <button class="btn btn-outline-secondary" id="searchInventoryBtn">
-                                        <i class="fas fa-search"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <select id="filterStatus" class="form-select">
-                                    <option value="all">جميع الحالات</option>
-                                    <option value="corrected">تم التصحيح</option>
-                                    <option value="in-process">قيد المعالجة</option>
-                                    <option value="not-delivered">لم تسلم</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>التاريخ</th>
-                                        <th>اسم الزبون</th>
-                                        <th>الكمية المسلمة</th>
-                                        <th>الكمية الموجودة</th>
-                                        <th>الفارق</th>
-                                        <th>المخزني المسؤول</th>
-                                        <th>حالة التقرير</th>
-                                        <th>الملاحظات</th>
-                                        <th>إجراءات</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="inventoryTable">
-                                    <!-- التقارير ستظهر هنا -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+    <!-- المحتوى الرئيسي -->
+    <div class="container mx-auto p-6 max-w-6xl">
+        <!-- نموذج إدخال البيانات -->
+        <div class="bg-white p-6 rounded-lg shadow-lg mb-6">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4">
+                <i class="fas fa-edit mr-2"></i> تسجيل البضائع الناقصة/الزائدة
+            </h2>
+            <form id="goodsForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                    <label for="date" class="block text-gray-700 mb-2">التاريخ</label>
+                    <input type="date" id="date" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                 </div>
+                <div>
+                    <label for="customer" class="block text-gray-700 mb-2">الزبون</label>
+                    <select id="customer" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        <option value="">جاري تحميل الزبائن...</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="itemCode" class="block text-gray-700 mb-2">كود السلعة</label>
+                    <input type="text" id="itemCode" placeholder="أدخل كود السلعة" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div>
+                    <label for="itemName" class="block text-gray-700 mb-2">اسم القطعة</label>
+                    <input type="text" id="itemName" placeholder="أدخل اسم القطعة" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div>
+                    <label for="deliveredQty" class="block text-gray-700 mb-2">الكمية المسلمة</label>
+                    <input type="number" id="deliveredQty" placeholder="أدخل الكمية المسلمة" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div>
+                    <label for="receivedQty" class="block text-gray-700 mb-2">الكمية المستلمة</label>
+                    <input type="number" id="receivedQty" placeholder="أدخل الكمية المستلمة" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div>
+                    <label for="warehouseManager" class="block text-gray-700 mb-2">المخزني المسؤول</label>
+                    <input type="text" id="warehouseManager" placeholder="اسم المخزني المسؤول" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div>
+                    <label for="status" class="block text-gray-700 mb-2">الحالة</label>
+                    <select id="status" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        <option value="قيد الدراسة">قيد الدراسة</option>
+                        <option value="تم الدراسة">تم الدراسة</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="difference" class="block text-gray-700 mb-2">الفرق</label>
+                    <input type="text" id="difference" readonly class="w-full p-3 border rounded bg-gray-100">
+                </div>
+                <div class="flex items-end md:col-span-2">
+                    <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white p-3 rounded transition">
+                        <i class="fas fa-save mr-2"></i> حفظ التسجيل
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- جدول البيانات المسجلة -->
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-gray-700">
+                    <i class="fas fa-table mr-2"></i> سجل البضائع الناقصة/الزائدة
+                </h2>
+                <div class="flex items-center space-x-2">
+                    <input type="text" id="searchInput" placeholder="ابحث بكود السلعة أو الاسم..." class="p-2 border rounded search-input w-40 focus:w-64">
+                    <select id="statusFilter" class="p-2 border rounded">
+                        <option value="all">جميع الحالات</option>
+                        <option value="قيد الدراسة">قيد الدراسة</option>
+                        <option value="تم الدراسة">تم الدراسة</option>
+                    </select>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-blue-600 text-white">
+                            <th class="p-3">التاريخ</th>
+                            <th class="p-3">الزبون</th>
+                            <th class="p-3">كود السلعة</th>
+                            <th class="p-3">اسم القطعة</th>
+                            <th class="p-3">المسلمة</th>
+                            <th class="p-3">المستلمة</th>
+                            <th class="p-3">الفرق</th>
+                            <th class="p-3">المخزني</th>
+                            <th class="p-3">الحالة</th>
+                            <th class="p-3">إجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recordsTableBody">
+                        <tr>
+                            <td colspan="10" class="p-4 text-center text-gray-500">جاري تحميل البيانات...</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
-    <!-- نافذة إضافة تقرير جديد -->
-    <div class="modal fade" id="addInventoryModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title">إضافة تقرير مخزون جديد</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="inventoryClient" class="form-label">اسم الزبون</label>
-                                <select class="form-select" id="inventoryClient" required>
-                                    <option value="" selected disabled>اختر الزبون</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="deliveredQuantity" class="form-label">الكمية المسلمة من الشركة</label>
-                                <input type="number" class="form-control" id="deliveredQuantity" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="existingQuantity" class="form-label">الكمية الموجودة</label>
-                                <input type="number" class="form-control" id="existingQuantity" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="inventoryEmployee" class="form-label">المخزني المسؤول</label>
-                                <input type="text" class="form-control" id="inventoryEmployee" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="inventoryStatus" class="form-label">حالة التقرير</label>
-                                <select class="form-select" id="inventoryStatus" required>
-                                    <option value="corrected">تم التصحيح</option>
-                                    <option value="in-process">قيد المعالجة</option>
-                                    <option value="not-delivered">لم تسلم</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="inventoryNotes" class="form-label">الملاحظات النهائية</label>
-                                <textarea class="form-control" id="inventoryNotes" rows="3"></textarea>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="button" id="saveInventoryBtn" class="btn btn-primary">حفظ التقرير</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- نافذة تعديل التقرير -->
-    <div class="modal fade" id="editInventoryModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title">تعديل تقرير المخزون</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" id="editInventoryId">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="editInventoryClient" class="form-label">اسم الزبون</label>
-                                <input type="text" class="form-control" id="editInventoryClient" readonly>
-                            </div>
-                            <div class="mb-3">
-                                <label for="editDeliveredQuantity" class="form-label">الكمية المسلمة من الشركة</label>
-                                <input type="number" class="form-control" id="editDeliveredQuantity" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="editExistingQuantity" class="form-label">الكمية الموجودة</label>
-                                <input type="number" class="form-control" id="editExistingQuantity" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="editInventoryEmployee" class="form-label">المخزني المسؤول</label>
-                                <input type="text" class="form-control" id="editInventoryEmployee" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="editInventoryStatus" class="form-label">حالة التقرير</label>
-                                <select class="form-select" id="editInventoryStatus" required>
-                                    <option value="corrected">تم التصحيح</option>
-                                    <option value="in-process">قيد المعالجة</option>
-                                    <option value="not-delivered">لم تسلم</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="editInventoryNotes" class="form-label">الملاحظات النهائية</label>
-                                <textarea class="form-control" id="editInventoryNotes" rows="3"></textarea>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="button" id="updateInventoryBtn" class="btn btn-primary">حفظ التغييرات</button>
-                    <button type="button" id="deleteInventoryBtn" class="btn btn-danger">حذف التقرير</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <footer class="footer">
-        <div class="container text-center">
-            <p class="mb-0">جميع الحقوق محفوظة &copy; 2023 SYM Algeria</p>
-        </div>
-    </footer>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script>
         // تهيئة Firebase
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            databaseURL: "YOUR_DATABASE_URL",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyBqYbL6zG9Z6ZQZQZQZQZQZQZQZQZQZQZQ",
+            authDomain: "commercial-3ef19.firebaseapp.com",
+            databaseURL: "https://commercial-3ef19-default-rtdb.firebaseio.com",
+            projectId: "commercial-3ef19",
+            storageBucket: "commercial-3ef19.appspot.com",
+            messagingSenderId: "1234567890",
+            appId: "1:1234567890:web:1234567890abcdef"
         };
 
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
-
         const database = firebase.database();
-        const auth = firebase.auth();
 
-        // تسجيل الدخول (يمكنك تغيير هذا لنظام تسجيل دخول حقيقي)
-        auth.signInAnonymously()
-            .then(() => {
-                console.log("تم تسجيل الدخول كمستخدم مجهول");
-            })
-            .catch((error) => {
-                console.error("خطأ في تسجيل الدخول:", error);
-            });
+        // تعيين التاريخ الافتراضي لليوم
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date();
+            const formattedDate = today.toISOString().split('T')[0];
+            document.getElementById('date').value = formattedDate;
+            
+            // تفعيل الوضع الليلي إذا كان مفعلًا
+            if (localStorage.getItem('darkMode') === 'true') {
+                document.body.classList.add('dark-mode');
+                document.getElementById('darkModeToggle').querySelector('i').classList.replace('fa-moon', 'fa-sun');
+            }
 
-        // تسجيل الخروج
-        document.getElementById('logoutBtn').addEventListener('click', () => {
-            auth.signOut().then(() => {
-                window.location.href = 'login.html';
-            });
+            // تحميل بيانات الزبائن تلقائيا
+            loadCustomers();
+            
+            // تحميل البيانات من Firebase
+            loadRecords();
         });
 
-        // كود تقارير المخزون
-        document.addEventListener('DOMContentLoaded', function() {
-            const inventoryTable = document.getElementById('inventoryTable');
-            const searchInventoryInput = document.getElementById('searchInventoryInput');
-            const searchInventoryBtn = document.getElementById('searchInventoryBtn');
-            const filterStatus = document.getElementById('filterStatus');
-            const inventoryClientSelect = document.getElementById('inventoryClient');
-            const deliveredQuantityInput = document.getElementById('deliveredQuantity');
-            const existingQuantityInput = document.getElementById('existingQuantity');
-            const inventoryEmployeeInput = document.getElementById('inventoryEmployee');
-            const inventoryStatusSelect = document.getElementById('inventoryStatus');
-            const inventoryNotesInput = document.getElementById('inventoryNotes');
-            const saveInventoryBtn = document.getElementById('saveInventoryBtn');
-            const editInventoryClientInput = document.getElementById('editInventoryClient');
-            const editDeliveredQuantityInput = document.getElementById('editDeliveredQuantity');
-            const editExistingQuantityInput = document.getElementById('editExistingQuantity');
-            const editInventoryEmployeeInput = document.getElementById('editInventoryEmployee');
-            const editInventoryStatusSelect = document.getElementById('editInventoryStatus');
-            const editInventoryNotesInput = document.getElementById('editInventoryNotes');
-            const updateInventoryBtn = document.getElementById('updateInventoryBtn');
-            const deleteInventoryBtn = document.getElementById('deleteInventoryBtn');
+        // تبديل الوضع الليلي
+        document.getElementById('darkModeToggle').addEventListener('click', function() {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
             
-            const addInventoryModal = new bootstrap.Modal(document.getElementById('addInventoryModal'));
-            const editInventoryModal = new bootstrap.Modal(document.getElementById('editInventoryModal'));
+            // تغيير الأيقونة حسب الوضع
+            const icon = this.querySelector('i');
+            if (document.body.classList.contains('dark-mode')) {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+            } else {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+            }
+        });
+
+        // حساب الفرق بين الكميات
+        document.getElementById('deliveredQty').addEventListener('input', calculateDifference);
+        document.getElementById('receivedQty').addEventListener('input', calculateDifference);
+
+        function calculateDifference() {
+            const delivered = parseFloat(document.getElementById('deliveredQty').value) || 0;
+            const received = parseFloat(document.getElementById('receivedQty').value) || 0;
+            const difference = received - delivered;
             
-            let inventoryReports = [];
-            let clients = [];
-            let currentReportId = null;
+            const differenceField = document.getElementById('difference');
+            differenceField.value = difference;
             
-            // تحميل الزبائن من Firebase
-            function loadClients() {
-                const userId = auth.currentUser?.uid;
+            if (difference > 0) {
+                differenceField.className = 'w-full p-3 border rounded positive';
+            } else if (difference < 0) {
+                differenceField.className = 'w-full p-3 border rounded negative';
+            } else {
+                differenceField.className = 'w-full p-3 border rounded bg-gray-100';
+            }
+        }
+
+        // تحميل بيانات الزبائن من Google Sheets تلقائيا من عمود CLIENT
+        async function loadCustomers() {
+            try {
+                // رابط ملف Google Sheets مع تحديد التصدير كـ CSV
+                const sheetId = '2PACX-1vTVFnFkW6NhZpBb3Wty2qAa97GNKg43Um0JdzqyTobWS-vtRNSJ4_aRjJ3OS-tG_1-GPOSeTr5levqI';
+                const csvUrl = `https://docs.google.com/spreadsheets/d/e/${sheetId}/pub?gid=0&single=true&output=csv`;
                 
-                if (!userId) return;
+                const response = await fetch(csvUrl);
+                if (!response.ok) throw new Error('فشل في تحميل الملف');
                 
-                database.ref(`users/${userId}/clients`).once('value')
-                    .then((snapshot) => {
-                        clients = [];
-                        inventoryClientSelect.innerHTML = '<option value="" selected disabled>اختر الزبون</option>';
-                        
-                        if (snapshot.exists()) {
-                            const clientsData = snapshot.val();
-                            clients = Object.entries(clientsData).map(([id, client]) => ({ id, ...client }));
-                            
-                            // ملء قائمة الزبائن في النموذج
-                            clients.forEach(client => {
-                                const option = document.createElement('option');
-                                option.value = client.id;
-                                option.textContent = client.name;
-                                inventoryClientSelect.appendChild(option);
-                            });
-                        }
-                        
-                        loadInventoryReports();
-                    })
-                    .catch(error => {
-                        console.error('Error loading clients:', error);
-                    });
+                const csvData = await response.text();
+                
+                // تحويل CSV إلى JSON
+                const customers = parseCSV(csvData);
+                
+                if (customers.length === 0) {
+                    throw new Error('لا توجد بيانات في الملف');
+                }
+                
+                // ملء قائمة الزبائن من عمود CLIENT
+                const customerSelect = document.getElementById('customer');
+                customerSelect.innerHTML = '<option value="">اختر الزبون</option>';
+                
+                // استخراج أسماء الزبائن الفريدة من عمود CLIENT
+                const clientNames = new Set();
+                
+                customers.forEach(row => {
+                    // البحث عن عمود CLIENT بأحرف مختلفة (كبير/صغير)
+                    const clientKey = Object.keys(row).find(key => key.toLowerCase() === 'client');
+                    if (clientKey && row[clientKey] && row[clientKey].trim() !== '') {
+                        clientNames.add(row[clientKey].trim());
+                    }
+                });
+                
+                if (clientNames.size === 0) {
+                    throw new Error('لا توجد أسماء زبائن في عمود CLIENT');
+                }
+                
+                // إضافة الأسماء إلى القائمة المنسدلة
+                clientNames.forEach(name => {
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    customerSelect.appendChild(option);
+                });
+                
+                console.log('تم تحميل بيانات الزبائن بنجاح:', clientNames);
+                
+            } catch (error) {
+                console.error('حدث خطأ أثناء تحميل بيانات الزبائن:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'خطأ',
+                    text: 'حدث خطأ أثناء تحميل بيانات الزبائن: ' + error.message
+                });
+                
+                // وضع قيم افتراضية في حالة الخطأ
+                const customerSelect = document.getElementById('customer');
+                customerSelect.innerHTML = `
+                    <option value="">اختر الزبون</option>
+                    <option value="زبون 1">زبون 1</option>
+                    <option value="زبون 2">زبون 2</option>
+                    <option value="زبون 3">زبون 3</option>
+                `;
+            }
+        }
+
+        // دالة لتحويل CSV إلى JSON
+        function parseCSV(csv) {
+            const lines = csv.split('\n').filter(line => line.trim() !== '');
+            if (lines.length < 1) return [];
+            
+            // استخراج العناوين من السطر الأول
+            const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+            
+            const result = [];
+            
+            for (let i = 1; i < lines.length; i++) {
+                const currentline = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                
+                const obj = {};
+                for (let j = 0; j < headers.length; j++) {
+                    obj[headers[j]] = currentline[j] ? currentline[j].trim().replace(/"/g, '') : '';
+                }
+                
+                result.push(obj);
             }
             
-            // تحميل تقارير المخزون من Firebase
-            function loadInventoryReports() {
-                const userId = auth.currentUser?.uid;
-                
-                if (!userId) return;
-                
-                database.ref(`users/${userId}/inventory`).once('value')
-                    .then((snapshot) => {
-                        inventoryTable.innerHTML = '';
-                        inventoryReports = [];
-                        
-                        if (snapshot.exists()) {
-                            const reportsData = snapshot.val();
-                            inventoryReports = Object.entries(reportsData).map(([id, report]) => ({ id, ...report }));
-                            
-                            // تصفية حسب حالة البحث
-                            const searchTerm = searchInventoryInput.value.toLowerCase();
-                            const statusFilter = filterStatus.value;
-                            
-                            const filteredReports = inventoryReports.filter(report => {
-                                const client = clients.find(c => c.id === report.clientId);
-                                const clientName = client ? client.name : '';
-                                const matchesSearch = searchTerm === '' || 
-                                    clientName.toLowerCase().includes(searchTerm) || 
-                                    report.employee.toLowerCase().includes(searchTerm);
-                                const matchesStatus = statusFilter === 'all' || report.status === statusFilter;
-                                
-                                return matchesSearch && matchesStatus;
-                            });
-                            
-                            // عرض التقارير
-                            if (filteredReports.length > 0) {
-                                filteredReports.forEach(report => {
-                                    const reportElement = createInventoryReportElement(report);
-                                    inventoryTable.appendChild(reportElement);
-                                });
-                            } else {
-                                inventoryTable.innerHTML = '<tr><td colspan="9" class="text-center py-3 text-muted">لا توجد تقارير مطابقة لمعايير البحث</td></tr>';
-                            }
-                        } else {
-                            inventoryTable.innerHTML = '<tr><td colspan="9" class="text-center py-3 text-muted">لا توجد تقارير مخزون</td></tr>';
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error loading inventory reports:', error);
-                    });
+            return result;
+        }
+
+        // تحميل السجلات من Firebase
+        function loadRecords() {
+            database.ref('goodsRecords').on('value', (snapshot) => {
+                const records = snapshot.val() ? Object.values(snapshot.val()) : [];
+                renderRecords(records);
+            });
+        }
+
+        // عرض البيانات في الجدول
+        function renderRecords(records) {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const tbody = document.getElementById('recordsTableBody');
+            tbody.innerHTML = '';
+            
+            const filteredRecords = records
+                .filter(record => {
+                    const matchesSearch = 
+                        record.itemCode.toLowerCase().includes(searchTerm) || 
+                        record.itemName.toLowerCase().includes(searchTerm);
+                    
+                    const matchesStatus = 
+                        statusFilter === 'all' || 
+                        record.status === statusFilter;
+                    
+                    return matchesSearch && matchesStatus;
+                })
+                .sort((a, b) => new Date(b.date) - new Date(a.date)); // أحدث المدخلات أولاً
+            
+            if (filteredRecords.length === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td colspan="10" class="p-4 text-center text-gray-500">
+                        لا توجد سجلات متاحة
+                    </td>
+                `;
+                tbody.appendChild(tr);
+                return;
             }
             
-            // إنشاء عنصر تقرير في واجهة المستخدم
-            function createInventoryReportElement(report) {
-                const client = clients.find(c => c.id === report.clientId);
-                const clientName = client ? client.name : 'غير معروف';
+            filteredRecords.forEach((record, index) => {
+                const tr = document.createElement('tr');
+                if (index % 2 === 0) tr.classList.add('bg-gray-50');
                 
-                const difference = report.existingQuantity - report.deliveredQuantity;
-                const differenceText = difference > 0 ? 
-                    `<span class="text-success">+${difference}</span>` : 
-                    `<span class="text-danger">${difference}</span>`;
+                const difference = record.receivedQty - record.deliveredQty;
+                let differenceClass = 'px-2 py-1 rounded-full text-xs';
                 
-                const statusTexts = {
-                    'corrected': '<span class="status-badge status-corrected">تم التصحيح</span>',
-                    'in-process': '<span class="status-badge status-in-process">قيد المعالجة</span>',
-                    'not-delivered': '<span class="status-badge status-not-delivered">لم تسلم</span>'
-                };
+                if (difference > 0) {
+                    differenceClass += ' bg-green-100 text-green-800';
+                } else if (difference < 0) {
+                    differenceClass += ' bg-red-100 text-red-800';
+                } else {
+                    differenceClass += ' bg-gray-100 text-gray-800';
+                }
                 
-                const row = document.createElement('tr');
-                row.dataset.id = report.id;
+                let statusClass = 'px-2 py-1 rounded-full text-xs';
+                if (record.status === 'قيد الدراسة') {
+                    statusClass += ' under-review';
+                } else {
+                    statusClass += ' completed';
+                }
                 
-                // تنسيق التاريخ
-                const date = new Date(report.createdAt);
-                const dateStr = date.toLocaleDateString('ar-EG');
-                
-                row.innerHTML = `
-                    <td>${dateStr}</td>
-                    <td>${clientName}</td>
-                    <td>${report.deliveredQuantity}</td>
-                    <td>${report.existingQuantity}</td>
-                    <td>${differenceText}</td>
-                    <td>${report.employee}</td>
-                    <td>${statusTexts[report.status]}</td>
-                    <td>${report.notes || 'لا توجد ملاحظات'}</td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary edit-report">
+                tr.innerHTML = `
+                    <td class="p-3">${record.date}</td>
+                    <td class="p-3">${record.customer}</td>
+                    <td class="p-3">${record.itemCode}</td>
+                    <td class="p-3">${record.itemName}</td>
+                    <td class="p-3 text-center">${record.deliveredQty}</td>
+                    <td class="p-3 text-center">${record.receivedQty}</td>
+                    <td class="p-3 text-center">
+                        <span class="${differenceClass}">${difference}</span>
+                    </td>
+                    <td class="p-3">${record.warehouseManager}</td>
+                    <td class="p-3 text-center">
+                        <span class="${statusClass}">${record.status}</span>
+                    </td>
+                    <td class="p-3">
+                        <button onclick="editRecord('${record.id}')" class="action-btn text-blue-600 hover:text-blue-800 mr-2">
                             <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deleteRecord('${record.id}')" class="action-btn text-red-600 hover:text-red-800">
+                            <i class="fas fa-trash"></i>
                         </button>
                     </td>
                 `;
-                
-                row.querySelector('.edit-report').addEventListener('click', () => openEditInventoryModal(report));
-                
-                return row;
-            }
+                tbody.appendChild(tr);
+            });
+        }
+
+        // إضافة سجل جديد إلى Firebase
+        document.getElementById('goodsForm').addEventListener('submit', function(e) {
+            e.preventDefault();
             
-            // فتح نافذة تعديل التقرير
-            function openEditInventoryModal(report) {
-                currentReportId = report.id;
-                
-                const client = clients.find(c => c.id === report.clientId);
-                const clientName = client ? client.name : 'غير معروف';
-                
-                editInventoryClientInput.value = clientName;
-                editDeliveredQuantityInput.value = report.deliveredQuantity;
-                editExistingQuantityInput.value = report.existingQuantity;
-                editInventoryEmployeeInput.value = report.employee;
-                editInventoryStatusSelect.value = report.status;
-                editInventoryNotesInput.value = report.notes || '';
-                
-                editInventoryModal.show();
-            }
+            const record = {
+                id: Date.now().toString(),
+                date: document.getElementById('date').value,
+                customer: document.getElementById('customer').value,
+                itemCode: document.getElementById('itemCode').value,
+                itemName: document.getElementById('itemName').value,
+                deliveredQty: parseFloat(document.getElementById('deliveredQty').value),
+                receivedQty: parseFloat(document.getElementById('receivedQty').value),
+                warehouseManager: document.getElementById('warehouseManager').value,
+                status: document.getElementById('status').value,
+                difference: parseFloat(document.getElementById('difference').value) || 0
+            };
             
-            // إضافة تقرير جديد
-            function addInventoryReport() {
-                const clientId = inventoryClientSelect.value;
-                const deliveredQuantity = parseInt(deliveredQuantityInput.value);
-                const existingQuantity = parseInt(existingQuantityInput.value);
-                const employee = inventoryEmployeeInput.value.trim();
-                const status = inventoryStatusSelect.value;
-                const notes = inventoryNotesInput.value.trim();
-                
-                if (!clientId || isNaN(deliveredQuantity) || isNaN(existingQuantity) || !employee) {
-                    alert('الرجاء ملء جميع الحقول المطلوبة');
-                    return;
-                }
-                
-                const userId = auth.currentUser?.uid;
-                
-                if (!userId) return;
-                
-                const newReportRef = database.ref(`users/${userId}/inventory`).push();
-                newReportRef.set({
-                    clientId: clientId,
-                    deliveredQuantity: deliveredQuantity,
-                    existingQuantity: existingQuantity,
-                    employee: employee,
-                    status: status,
-                    notes: notes,
-                    createdAt: firebase.database.ServerValue.TIMESTAMP
-                })
+            // إضافة السجل إلى Firebase
+            database.ref('goodsRecords/' + record.id).set(record)
                 .then(() => {
                     // إعادة تعيين النموذج
-                    inventoryClientSelect.value = '';
-                    deliveredQuantityInput.value = '';
-                    existingQuantityInput.value = '';
-                    inventoryEmployeeInput.value = '';
-                    inventoryStatusSelect.value = 'corrected';
-                    inventoryNotesInput.value = '';
+                    this.reset();
+                    document.getElementById('date').value = new Date().toISOString().split('T')[0];
+                    document.getElementById('difference').value = '';
+                    document.getElementById('difference').className = 'w-full p-3 border rounded bg-gray-100';
                     
-                    addInventoryModal.hide();
-                    loadInventoryReports();
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'تم الحفظ',
+                        text: 'تم تسجيل البيانات بنجاح',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
                 })
-                .catch(error => {
-                    console.error('Error adding inventory report:', error);
+                .catch((error) => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'خطأ',
+                        text: 'حدث خطأ أثناء حفظ البيانات: ' + error.message
+                    });
                 });
-            }
-            
-            // تحديث تقرير المخزون
-            function updateInventoryReport() {
-                const deliveredQuantity = parseInt(editDeliveredQuantityInput.value);
-                const existingQuantity = parseInt(editExistingQuantityInput.value);
-                const employee = editInventoryEmployeeInput.value.trim();
-                const status = editInventoryStatusSelect.value;
-                const notes = editInventoryNotesInput.value.trim();
-                
-                if (isNaN(deliveredQuantity) || isNaN(existingQuantity) || !employee || !currentReportId) {
-                    alert('الرجاء ملء جميع الحقول المطلوبة');
-                    return;
+        });
+
+        // تعديل سجل
+        window.editRecord = function(id) {
+            database.ref('goodsRecords/' + id).once('value')
+                .then((snapshot) => {
+                    const record = snapshot.val();
+                    if (!record) return;
+                    
+                    Swal.fire({
+                        title: 'تعديل السجل',
+                        html: `
+                            <input type="date" id="editDate" class="swal2-input" value="${record.date}">
+                            <select id="editCustomer" class="swal2-select">
+                                <option value="${record.customer}">${record.customer}</option>
+                            </select>
+                            <input type="text" id="editItemCode" class="swal2-input" value="${record.itemCode}" placeholder="كود السلعة">
+                            <input type="text" id="editItemName" class="swal2-input" value="${record.itemName}" placeholder="اسم القطعة">
+                            <input type="number" id="editDeliveredQty" class="swal2-input" value="${record.deliveredQty}" placeholder="الكمية المسلمة">
+                            <input type="number" id="editReceivedQty" class="swal2-input" value="${record.receivedQty}" placeholder="الكمية المستلمة">
+                            <input type="text" id="editWarehouseManager" class="swal2-input" value="${record.warehouseManager}" placeholder="المخزني المسؤول">
+                            <select id="editStatus" class="swal2-select">
+                                <option value="قيد الدراسة" ${record.status === 'قيد الدراسة' ? 'selected' : ''}>قيد الدراسة</option>
+                                <option value="تم الدراسة" ${record.status === 'تم الدراسة' ? 'selected' : ''}>تم الدراسة</option>
+                            </select>
+                        `,
+                        showCancelButton: true,
+                        confirmButtonText: 'حفظ التعديلات',
+                        cancelButtonText: 'إلغاء',
+                        preConfirm: () => {
+                            const updatedRecord = {
+                                id: record.id,
+                                date: document.getElementById('editDate').value,
+                                customer: document.getElementById('editCustomer').value,
+                                itemCode: document.getElementById('editItemCode').value,
+                                itemName: document.getElementById('editItemName').value,
+                                deliveredQty: parseFloat(document.getElementById('editDeliveredQty').value),
+                                receivedQty: parseFloat(document.getElementById('editReceivedQty').value),
+                                warehouseManager: document.getElementById('editWarehouseManager').value,
+                                status: document.getElementById('editStatus').value,
+                                difference: parseFloat(document.getElementById('editReceivedQty').value) - parseFloat(document.getElementById('editDeliveredQty').value)
+                            };
+                            
+                            return database.ref('goodsRecords/' + record.id).update(updatedRecord)
+                                .then(() => {
+                                    Swal.fire('تم التعديل!', 'تم تحديث السجل بنجاح.', 'success');
+                                })
+                                .catch((error) => {
+                                    Swal.showValidationMessage('حدث خطأ أثناء التحديث: ' + error.message);
+                                });
+                        }
+                    });
+                });
+        };
+
+        // حذف سجل من Firebase
+        window.deleteRecord = function(id) {
+            Swal.fire({
+                title: 'هل أنت متأكد؟',
+                text: 'سيتم حذف هذا السجل نهائيًا!',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'نعم، احذف!',
+                cancelButtonText: 'إلغاء',
+                confirmButtonColor: '#d33'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    database.ref('goodsRecords/' + id).remove()
+                        .then(() => {
+                            Swal.fire('تم الحذف!', 'تم حذف السجل بنجاح.', 'success');
+                        })
+                        .catch((error) => {
+                            Swal.fire('خطأ!', 'حدث خطأ أثناء الحذف: ' + error.message, 'error');
+                        });
                 }
-                
-                const userId = auth.currentUser?.uid;
-                
-                if (!userId) return;
-                
-                database.ref(`users/${userId}/inventory/${currentReportId}`).update({
-                    deliveredQuantity: deliveredQuantity,
-                    existingQuantity: existingQuantity,
-                    employee: employee,
-                    status: status,
-                    notes: notes
-                })
-                .then(() => {
-                    editInventoryModal.hide();
-                    loadInventoryReports();
-                })
-                .catch(error => {
-                    console.error('Error updating inventory report:', error);
-                });
-            }
-            
-            // حذف تقرير المخزون
-            function deleteInventoryReport() {
-                if (!confirm('هل أنت متأكد من حذف هذا التقرير؟')) return;
-                
-                const userId = auth.currentUser?.uid;
-                
-                if (!userId || !currentReportId) return;
-                
-                database.ref(`users/${userId}/inventory/${currentReportId}`).remove()
-                .then(() => {
-                    editInventoryModal.hide();
-                    loadInventoryReports();
-                })
-                .catch(error => {
-                    console.error('Error deleting inventory report:', error);
-                });
-            }
-            
-            // البحث عن تقارير المخزون
-            function searchInventory() {
-                loadInventoryReports();
-            }
-            
-            // أحداث المستخدم
-            saveInventoryBtn.addEventListener('click', addInventoryReport);
-            updateInventoryBtn.addEventListener('click', updateInventoryReport);
-            deleteInventoryBtn.addEventListener('click', deleteInventoryReport);
-            
-            searchInventoryBtn.addEventListener('click', searchInventory);
-            searchInventoryInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') searchInventory();
             });
-            
-            filterStatus.addEventListener('change', searchInventory);
-            
-            // تهيئة الصفحة
-            loadClients();
+        };
+
+        // البحث والتصفية
+        document.getElementById('searchInput').addEventListener('input', () => {
+            database.ref('goodsRecords').once('value').then(snapshot => {
+                const records = snapshot.val() ? Object.values(snapshot.val()) : [];
+                renderRecords(records);
+            });
+        });
+
+        document.getElementById('statusFilter').addEventListener('change', () => {
+            database.ref('goodsRecords').once('value').then(snapshot => {
+                const records = snapshot.val() ? Object.values(snapshot.val()) : [];
+                renderRecords(records);
+            });
         });
     </script>
 </body>
