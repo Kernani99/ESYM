@@ -29,19 +29,61 @@
         let customerAppointments = [];
         let userId = null;
         let isAuthReady = false;
+        let currentWeekStartDate = new Date(); // Stores the Sunday of the currently displayed week
 
         // Reference to Firestore collection for customer appointments
         let appointmentsCollectionRef;
 
-        // Days of the week in Arabic, Sunday to Thursday
+        // Days of the week in English
         const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
-        const arabicDays = {
-            'Sunday': 'الأحد',
-            'Monday': 'الاثنين',
-            'Tuesday': 'الثلاثاء',
-            'Wednesday': 'الأربعاء',
-            'Thursday': 'الخميس'
-        };
+
+        /**
+         * Helper function to get the Sunday of a given week.
+         * @param {Date} date - Any date within the desired week.
+         * @returns {Date} - A Date object representing the Sunday of that week.
+         */
+        function getSundayOfCurrentWeek(date) {
+            const d = new Date(date);
+            const day = d.getDay(); // 0 for Sunday, 1 for Monday, etc.
+            const diff = d.getDate() - day; // Adjust to Sunday
+            const sunday = new Date(d.setDate(diff));
+            sunday.setHours(0, 0, 0, 0); // Set to start of the day
+            return sunday;
+        }
+
+        /**
+         * Helper function to get the Thursday of a given week.
+         * @param {Date} sundayDate - The Sunday of the desired week.
+         * @returns {Date} - A Date object representing the Thursday of that week.
+         */
+        function getThursdayOfCurrentWeek(sundayDate) {
+            const thursday = new Date(sundayDate);
+            thursday.setDate(sundayDate.getDate() + 4); // Sunday (0) + 4 days = Thursday (4)
+            thursday.setHours(23, 59, 59, 999); // Set to end of the day
+            return thursday;
+        }
+
+        /**
+         * Formats the week's date range for display, using Western numerals and Arabic month names.
+         * @param {Date} startDate - The Sunday of the week.
+         * @returns {string} - Formatted string like "15 يونيو - 21 يونيو 2025" with Western numerals.
+         */
+        function formatWeekRange(startDate) {
+            const endDate = new Date(startDate);
+            endDate.setDate(startDate.getDate() + 4); // Thursday of the same week
+
+            // Get month names in Arabic
+            const startMonthName = startDate.toLocaleDateString('ar-EG', { month: 'long' });
+            const endMonthName = endDate.toLocaleDateString('ar-EG', { month: 'long' });
+
+            // Get day and year using Western numerals (getDate(), getFullYear())
+            const startDayNum = startDate.getDate();
+            const endDayNum = endDate.getDate();
+            const endYearNum = endDate.getFullYear();
+
+            return `${startDayNum} ${startMonthName} - ${endDayNum} ${endMonthName} ${endYearNum}`;
+        }
+
 
         /**
          * Initializes Firebase authentication and sets up the auth state listener.
@@ -54,6 +96,8 @@
                     appointmentsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/customerAppointments`);
                     isAuthReady = true;
                     document.getElementById('userIdDisplay').textContent = `ID: ${userId}`;
+                    currentWeekStartDate = getSundayOfCurrentWeek(new Date()); // Set initial week to current week
+                    updateWeekDisplay(); // Update display immediately
                     loadAppointments(); // Load appointments after authentication is ready
                 } else {
                     try {
@@ -66,8 +110,8 @@
                         console.error("Error signing in:", error);
                         Swal.fire({
                             icon: 'error',
-                            title: 'خطأ في المصادقة',
-                            text: 'فشل تسجيل الدخول: ' + error.message
+                            title: 'Authentication Error', // Changed to English for consistency
+                            text: 'Failed to sign in: ' + error.message
                         });
                     }
                 }
@@ -85,24 +129,24 @@
 
             // Display loading indicator
             document.getElementById('appointmentsGrid').innerHTML = `<div class="col-span-full text-center p-4 text-gray-500 flex items-center justify-center">
-                <i class="fas fa-spinner fa-spin ml-2"></i> جاري تحميل المواعيد...
+                <i class="fas fa-spinner fa-spin ml-2"></i> Loading appointments...
             </div>`;
 
             onSnapshot(query(appointmentsCollectionRef), (snapshot) => {
                 customerAppointments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderAppointments();
+                renderAppointments(); // Render based on the current filtered week
             }, (error) => {
                 console.error("Error fetching appointments:", error);
                 Swal.fire({
                     icon: 'error',
-                    title: 'خطأ في تحميل المواعيد',
-                    text: 'حدث خطأ أثناء تحميل المواعيد: ' + error.message
+                    title: 'Error Loading Appointments',
+                    text: 'An error occurred while loading appointments: ' + error.message
                 });
             });
         }
 
         /**
-         * Renders the customer appointments into the respective day sections.
+         * Renders the customer appointments into the respective day sections, filtered by the current week.
          */
         function renderAppointments() {
             daysOfWeek.forEach(day => {
@@ -112,15 +156,28 @@
                 }
             });
 
-            // Group appointments by day
+            // Calculate current week's start and end for filtering
+            const weekStart = currentWeekStartDate;
+            const weekEnd = getThursdayOfCurrentWeek(currentWeekStartDate);
+
+            // Filter appointments by week
+            const filteredAppointments = customerAppointments.filter(appointment => {
+                const appointmentDate = new Date(appointment.createdAt);
+                // Ensure the appointment falls within Sunday-Thursday of the current week
+                return appointmentDate >= weekStart && appointmentDate <= weekEnd &&
+                       daysOfWeek.includes(new Date(appointment.createdAt).toLocaleString('en-US', { weekday: 'long' }));
+            });
+
+            // Group filtered appointments by day
             const appointmentsByDay = {};
             daysOfWeek.forEach(day => {
                 appointmentsByDay[day] = [];
             });
 
-            customerAppointments.forEach(appointment => {
-                if (appointmentsByDay[appointment.day]) {
-                    appointmentsByDay[appointment.day].push(appointment);
+            filteredAppointments.forEach(appointment => {
+                const dayName = new Date(appointment.createdAt).toLocaleString('en-US', { weekday: 'long' });
+                if (appointmentsByDay[dayName]) {
+                    appointmentsByDay[dayName].push(appointment);
                 }
             });
 
@@ -131,7 +188,7 @@
 
                 if (dayList) { // Ensure dayList exists before proceeding
                     if (appointmentsForDay.length === 0) {
-                        dayList.innerHTML = `<div class="text-center text-gray-400 text-sm">لا توجد مواعيد</div>`;
+                        dayList.innerHTML = `<div class="text-center text-gray-400 text-sm">No appointments for this day.</div>`;
                     } else {
                         appointmentsForDay.forEach(appointment => {
                             const appointmentElement = document.createElement('div');
@@ -142,13 +199,13 @@
                                     <small class="text-gray-600 dark:text-gray-400">${appointment.appointmentTime}</small>
                                 </div>
                                 <div class="flex items-center space-x-2 mr-2">
-                                    <button onclick="suggestAppointmentDetails('${appointment.customerName}', '${appointment.appointmentTime}')" class="text-purple-600 hover:text-purple-800 transition-colors duration-200 p-1 rounded-full hover:bg-purple-100 dark:hover:bg-purple-900" aria-label="اقتراح تفاصيل الموعد">
+                                    <button onclick="suggestAppointmentDetails('${appointment.customerName}', '${appointment.appointmentTime}')" class="text-purple-600 hover:text-purple-800 transition-colors duration-200 p-1 rounded-full hover:bg-purple-100 dark:hover:bg-purple-900" aria-label="Suggest appointment details">
                                         <i class="fas fa-magic"></i> ✨
                                     </button>
-                                    <button onclick="generateFollowUpMessage('${appointment.customerName}', '${appointment.appointmentTime}')" class="text-green-600 hover:text-green-800 transition-colors duration-200 p-1 rounded-full hover:bg-green-100 dark:hover:bg-green-900" aria-label="إنشاء رسالة متابعة">
+                                    <button onclick="generateFollowUpMessage('${appointment.customerName}', '${appointment.appointmentTime}')" class="text-green-600 hover:text-green-800 transition-colors duration-200 p-1 rounded-full hover:bg-green-100 dark:hover:bg-green-900" aria-label="Generate follow-up message">
                                         <i class="fas fa-envelope"></i> ✨
                                     </button>
-                                    <button onclick="deleteAppointment('${appointment.id}')" class="text-red-600 hover:text-red-800 transition-colors duration-200 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900" aria-label="حذف الموعد">
+                                    <button onclick="deleteAppointment('${appointment.id}')" class="text-red-600 hover:text-red-800 transition-colors duration-200 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900" aria-label="Delete appointment">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
@@ -162,9 +219,10 @@
 
         /**
          * Handles adding a new customer appointment to Firestore.
+         * The appointment is associated with the current week being viewed.
          * @param {string} day - The day for the appointment (e.g., 'Sunday').
          */
-        window.addCustomerAppointment = async function(day) { // Made global for onclick in HTML
+        window.addCustomerAppointment = async function(day) {
             const customerNameInput = document.getElementById(`${day}CustomerName`);
             const appointmentTimeInput = document.getElementById(`${day}AppointmentTime`);
 
@@ -174,17 +232,25 @@
             if (!customerName || !appointmentTime || !isAuthReady) {
                 Swal.fire({
                     icon: 'warning',
-                    title: 'بيانات غير مكتملة',
-                    text: 'الرجاء إدخال اسم الزبون ووقت الموعد.'
+                    title: 'Incomplete Data', // Changed to English for consistency
+                    text: 'Please enter customer name and appointment time.'
                 });
                 return;
             }
 
+            // Create a Date object for the current day of the week being added to,
+            // and associate it with the current filtered week's dates.
+            const today = new Date();
+            const selectedDayIndex = daysOfWeek.indexOf(day);
+            const currentSunday = getSundayOfCurrentWeek(currentWeekStartDate);
+            const appointmentDate = new Date(currentSunday);
+            appointmentDate.setDate(currentSunday.getDate() + selectedDayIndex);
+            
             const newAppointment = {
-                day: day,
+                day: day, // Stores 'Sunday', 'Monday', etc.
                 customerName: customerName,
                 appointmentTime: appointmentTime,
-                createdAt: new Date().toISOString()
+                createdAt: appointmentDate.toISOString() // Store the date of the week being viewed
             };
 
             try {
@@ -194,8 +260,8 @@
             } catch (error) {
                 Swal.fire({
                     icon: 'error',
-                    title: 'خطأ',
-                    text: 'حدث خطأ أثناء إضافة الموعد: ' + error.message
+                    title: 'Error',
+                    text: 'An error occurred while adding the appointment: ' + error.message
                 });
             }
         };
@@ -204,14 +270,14 @@
          * Deletes a customer appointment from Firestore after user confirmation.
          * @param {string} appointmentId - The ID of the appointment to delete.
          */
-        window.deleteAppointment = function(appointmentId) { // Made global for onclick in HTML
+        window.deleteAppointment = function(appointmentId) {
             Swal.fire({
-                title: 'هل أنت متأكد؟',
-                text: 'سيتم حذف هذا الموعد نهائيًا!',
+                title: 'Are you sure?',
+                text: 'This appointment will be deleted permanently!',
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonText: 'نعم، احذف!',
-                cancelButtonText: 'إلغاء',
+                confirmButtonText: 'Yes, delete it!',
+                cancelButtonText: 'Cancel',
                 confirmButtonColor: '#d33'
             }).then(async (result) => {
                 if (result.isConfirmed && isAuthReady) {
@@ -221,8 +287,8 @@
                     } catch (error) {
                         Swal.fire({
                             icon: 'error',
-                            title: 'خطأ',
-                            text: 'حدث خطأ أثناء حذف الموعد: ' + error.message
+                            title: 'Error',
+                            text: 'An error occurred while deleting the appointment: ' + error.message
                         });
                     }
                 }
@@ -233,13 +299,12 @@
          * Toggles dark mode on/off and saves the preference to local storage.
          * Also updates the moon/sun icon in the sidebar.
          */
-        window.toggleDarkMode = function() { // Made global for onclick in HTML
+        window.toggleDarkMode = function() {
             document.body.classList.toggle('dark-mode');
             localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
 
-            // Check if on this specific page or the other one for the icon update
             const icon = document.querySelector('.sidebar-item i.fa-moon, .sidebar-item i.fa-sun');
-            if (icon) { // Only update if the element exists on this page
+            if (icon) {
                 if (document.body.classList.contains('dark-mode')) {
                     icon.classList.replace('fa-moon', 'fa-sun');
                 } else {
@@ -273,11 +338,11 @@
                     return result.candidates[0].content.parts[0].text;
                 } else {
                     console.error("Gemini API response structure unexpected:", result);
-                    return "لم يتم العثور على استجابة من الذكاء الاصطناعي.";
+                    return "No response found from AI.";
                 }
             } catch (error) {
                 console.error("Error calling Gemini API:", error);
-                return "حدث خطأ أثناء الاتصال بالذكاء الاصطناعي: " + error.message;
+                return "An error occurred while connecting to AI: " + error.message;
             }
         }
 
@@ -288,20 +353,20 @@
          */
         window.suggestAppointmentDetails = async function(customerName, appointmentTime) {
             Swal.fire({
-                title: 'جاري اقتراح تفاصيل الموعد ✨',
-                html: '<i class="fas fa-spinner fa-spin text-4xl text-purple-500"></i><p class="mt-4 text-lg">الرجاء الانتظار قليلاً...</p>',
+                title: 'Suggesting Appointment Details ✨',
+                html: '<i class="fas fa-spinner fa-spin text-4xl text-purple-500"></i><p class="mt-4 text-lg">Please wait...</p>',
                 allowOutsideClick: false,
                 showConfirmButton: false
             });
 
-            const prompt = `بالنظر إلى موعد مع الزبون "${customerName}" في تمام الساعة ${appointmentTime}، اقترح 3-5 نقاط موجزة لتفاصيل الموعد أو جدول الأعمال المحتمل، مع الأخذ في الاعتبار أن هذا موعد عمل.`;
+            const prompt = `Considering an appointment with customer "${customerName}" at ${appointmentTime}, suggest 3-5 concise bullet points for potential appointment details or agenda, keeping in mind this is a business appointment.`;
             const result = await callGeminiAPI(prompt);
 
             Swal.fire({
-                title: 'تفاصيل الموعد المقترحة ✨',
+                title: 'Suggested Appointment Details ✨',
                 html: `<div class="text-right">${result.replace(/\n/g, '<br>')}</div>`, // Handle newlines
                 icon: 'info',
-                confirmButtonText: 'حسنًا'
+                confirmButtonText: 'Okay'
             });
         };
 
@@ -312,22 +377,56 @@
          */
         window.generateFollowUpMessage = async function(customerName, appointmentTime) {
             Swal.fire({
-                title: 'جاري إنشاء رسالة المتابعة ✨',
-                html: '<i class="fas fa-spinner fa-spin text-4xl text-green-500"></i><p class="mt-4 text-lg">الرجاء الانتظار قليلاً...</p>',
+                title: 'Generating Follow-Up Message ✨',
+                html: '<i class="fas fa-spinner fa-spin text-4xl text-green-500"></i><p class="mt-4 text-lg">Please wait...</p>',
                 allowOutsideClick: false,
                 showConfirmButton: false
             });
 
-            const prompt = `اكتب رسالة متابعة موجزة ومهذبة للزبون "${customerName}" بعد موعده في تمام الساعة ${appointmentTime}. ركز على الشكر على الوقت والتذكير بأي نقاط عمل رئيسية أو خطوات تالية.`;
+            const prompt = `Write a concise and polite follow-up message for customer "${customerName}" after their appointment at ${appointmentTime}. Focus on thanking them for their time and reminding them of any key action points or next steps.`;
             const result = await callGeminiAPI(prompt);
 
             Swal.fire({
-                title: 'رسالة المتابعة المقترحة ✨',
+                title: 'Suggested Follow-Up Message ✨',
                 html: `<div class="text-right">${result.replace(/\n/g, '<br>')}</div>`, // Handle newlines
                 icon: 'info',
-                confirmButtonText: 'حسنًا'
+                confirmButtonText: 'Okay'
             });
         };
+
+        /**
+         * Moves the displayed week to the previous week.
+         */
+        window.goToPreviousWeek = function() {
+            currentWeekStartDate.setDate(currentWeekStartDate.getDate() - 7);
+            updateWeekDisplay();
+            renderAppointments(); // Re-render appointments for the new week
+        };
+
+        /**
+         * Moves the displayed week to the next week.
+         */
+        window.goToNextWeek = function() {
+            currentWeekStartDate.setDate(currentWeekStartDate.getDate() + 7);
+            updateWeekDisplay();
+            renderAppointments(); // Re-render appointments for the new week
+        };
+
+        /**
+         * Sets the displayed week to the current week.
+         */
+        window.goToCurrentWeek = function() {
+            currentWeekStartDate = getSundayOfCurrentWeek(new Date());
+            updateWeekDisplay();
+            renderAppointments(); // Re-render appointments for the current week
+        };
+
+        /**
+         * Updates the displayed week range in the UI.
+         */
+        function updateWeekDisplay() {
+            document.getElementById('currentWeekDisplay').textContent = formatWeekRange(currentWeekStartDate);
+        }
 
         // Initialize the page once the DOM is fully loaded
         document.addEventListener('DOMContentLoaded', function() {
@@ -641,7 +740,7 @@
             <span class="sidebar-text">المهام والملاحظات</span>
         </a>
         <!-- زر لصفحة جدول المواعيد (هذه الصفحة) -->
-        <a href="#program" class="sidebar-item">
+        <a href="customer-appointments-page.html" class="sidebar-item">
             <i class="fas fa-calendar-alt"></i>
             <span class="sidebar-text">المواعيد</span>
         </a>
@@ -651,7 +750,7 @@
             <span class="sidebar-text">البرنامج</span>
         </a>
         <!-- زر لصفحة الشكاوى الجديدة -->
-        <a href="#reclamation" class="sidebar-item">
+        <a href="reclamation-page.html" class="sidebar-item">
             <i class="fas fa-exclamation-triangle"></i>
             <span class="sidebar-text">الشكاوى</span>
         </a>
@@ -678,14 +777,28 @@
 
         <!-- المحتوى الديناميكي -->
         <div class="container mx-auto p-6">
-            <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-100 text-center mb-8">
-                <i class="fas fa-calendar-alt ml-3 text-primary-color"></i> جدول مواعيد العملاء (الأحد - الخميس)
+            <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-100 text-center mb-4">
+                <i class="fas fa-calendar-alt ml-3 text-primary-color"></i> جدول مواعيد العملاء (Sunday - Thursday)
             </h2>
 
+            <!-- أزرار التنقل بين الأسابيع وعرض الأسبوع الحالي -->
+            <div class="flex justify-center items-center mb-6 bg-white p-4 rounded-lg shadow-md">
+                <button onclick="goToPreviousWeek()" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full mx-2 transition-all duration-300 transform hover:scale-105" aria-label="Previous Week">
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+                <span id="currentWeekDisplay" class="text-xl font-bold text-gray-800 dark:text-gray-200"></span>
+                <button onclick="goToNextWeek()" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full mx-2 transition-all duration-300 transform hover:scale-105" aria-label="Next Week">
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+                <button onclick="goToCurrentWeek()" class="bg-green-500 hover:bg-green-600 text-white p-2 px-4 rounded-full mx-2 transition-all duration-300 transform hover:scale-105">
+                    Current Week
+                </button>
+            </div>
+
             <div id="appointmentsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-                <!-- الأحد -->
+                <!-- Sunday -->
                 <div class="day-card">
-                    <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200">الأحد</h3>
+                    <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200">Sunday</h3>
                     <div class="flex flex-col gap-3">
                         <input type="text" id="SundayCustomerName" placeholder="اسم الزبون" class="p-2 border rounded">
                         <input type="time" id="SundayAppointmentTime" class="p-2 border rounded">
@@ -698,9 +811,9 @@
                     </div>
                 </div>
 
-                <!-- الاثنين -->
+                <!-- Monday -->
                 <div class="day-card">
-                    <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200">الاثنين</h3>
+                    <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200">Monday</h3>
                     <div class="flex flex-col gap-3">
                         <input type="text" id="MondayCustomerName" placeholder="اسم الزبون" class="p-2 border rounded">
                         <input type="time" id="MondayAppointmentTime" class="p-2 border rounded">
@@ -713,9 +826,9 @@
                     </div>
                 </div>
 
-                <!-- الثلاثاء -->
+                <!-- Tuesday -->
                 <div class="day-card">
-                    <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200">الثلاثاء</h3>
+                    <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200">Tuesday</h3>
                     <div class="flex flex-col gap-3">
                         <input type="text" id="TuesdayCustomerName" placeholder="اسم الزبون" class="p-2 border rounded">
                         <input type="time" id="TuesdayAppointmentTime" class="p-2 border rounded">
@@ -728,9 +841,9 @@
                     </div>
                 </div>
 
-                <!-- الأربعاء -->
+                <!-- Wednesday -->
                 <div class="day-card">
-                    <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200">الأربعاء</h3>
+                    <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200">Wednesday</h3>
                     <div class="flex flex-col gap-3">
                         <input type="text" id="WednesdayCustomerName" placeholder="اسم الزبون" class="p-2 border rounded">
                         <input type="time" id="WednesdayAppointmentTime" class="p-2 border rounded">
@@ -743,9 +856,9 @@
                     </div>
                 </div>
 
-                <!-- الخميس -->
+                <!-- Thursday -->
                 <div class="day-card">
-                    <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200">الخميس</h3>
+                    <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200">Thursday</h3>
                     <div class="flex flex-col gap-3">
                         <input type="text" id="ThursdayCustomerName" placeholder="اسم الزبون" class="p-2 border rounded">
                         <input type="time" id="ThursdayAppointmentTime" class="p-2 border rounded">
