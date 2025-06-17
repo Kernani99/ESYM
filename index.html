@@ -9,10 +9,10 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js"></script>
 
-    <!-- Firebase SDKs - Updated to v11.6.1 and specific modules -->
+    <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global variables for Firebase (MUST BE USED as per instructions)
@@ -39,8 +39,9 @@
         /**
          * Initializes Firebase authentication and sets up the auth state listener.
          * Once authenticated, it sets the userId and initializes Firestore references.
+         * Handles showing/hiding the login page based on authentication status.
          */
-        async function initializeAuthAndFirestore() {
+        async function initializeAuthAndUI() {
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
                     // User is signed in
@@ -49,26 +50,77 @@
                     notesCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/notes`);
                     isAuthReady = true; // Auth is ready, can load data
                     document.getElementById('userIdDisplay').textContent = `ID: ${userId}`;
+                    
+                    document.getElementById('authSection').classList.add('hidden');
+                    document.getElementById('appSection').classList.remove('hidden');
                     loadData(); // Load data after authentication is ready
+                    updateDbStatus('متصل', true); // Database connected
                 } else {
-                    // User is signed out, attempt to sign in
+                    // User is signed out
+                    userId = null;
+                    isAuthReady = false;
+                    document.getElementById('authSection').classList.remove('hidden');
+                    document.getElementById('appSection').classList.add('hidden');
+                    updateDbStatus('غير متصل', false); // Database disconnected
+                    // Attempt to sign in with custom token if available (Canvas environment)
                     try {
                         if (initialAuthToken) {
                             await signInWithCustomToken(auth, initialAuthToken);
                         } else {
-                            await signInAnonymously(auth);
+                            // If no initial token, the login form will handle sign-in
+                            console.log("No initial auth token, displaying login form.");
                         }
                     } catch (error) {
-                        console.error("Error signing in:", error);
+                        console.error("Error with initial auth token or anonymous sign-in:", error);
                         Swal.fire({
                             icon: 'error',
-                            title: 'خطأ في المصادقة',
-                            text: 'فشل تسجيل الدخول: ' + error.message
+                            title: 'خطأ في المصادقة الأولية',
+                            text: 'فشل تسجيل الدخول التلقائي: ' + error.message
                         });
                     }
                 }
             });
         }
+
+        /**
+         * Handles user login with email and password.
+         * @param {string} email - The user's email.
+         * @param {string} password - The user's password.
+         */
+        async function loginUser(email, password) {
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                Swal.fire({
+                    icon: 'success',
+                    title: 'تم تسجيل الدخول بنجاح!',
+                    text: 'مرحباً بك في نظام إدارة المهام والملاحظات.'
+                });
+            } catch (error) {
+                console.error("Error signing in with email and password:", error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'فشل تسجيل الدخول',
+                    text: 'خطأ في البريد الإلكتروني أو كلمة المرور. يرجى التأكد من إنشاء حسابك في Firebase Authentication.'
+                });
+            }
+        }
+
+        /**
+         * Updates the database connection status display.
+         * @param {string} statusText - The text to display (e.g., 'متصل', 'غير متصل').
+         * @param {boolean} isConnected - True if connected, false otherwise.
+         */
+        function updateDbStatus(statusText, isConnected) {
+            const statusElement = document.getElementById('dbStatus');
+            statusElement.textContent = statusText;
+            statusElement.className = ''; // Clear existing classes
+            if (isConnected) {
+                statusElement.classList.add('text-green-500', 'font-bold');
+            } else {
+                statusElement.classList.add('text-red-500', 'font-bold');
+            }
+        }
+
 
         /**
          * Loads tasks and notes data from Firestore in real-time using onSnapshot listeners.
@@ -93,6 +145,7 @@
                 tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 filterAndRenderTasks(); // Filter and render based on currentFilterDate
                 updateProgress();
+                updateDbStatus('متصل', true); // Update status on successful data load
             }, (error) => {
                 console.error("Error fetching tasks:", error);
                 Swal.fire({
@@ -100,12 +153,14 @@
                     title: 'خطأ في تحميل المهام',
                     text: 'حدث خطأ أثناء تحميل المهام: ' + error.message
                 });
+                updateDbStatus('خطأ في الاتصال', false); // Update status on error
             });
 
             // Listen for real-time changes to notes
             onSnapshot(query(notesCollectionRef), (snapshot) => {
                 notes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 filterAndRenderNotes(); // Filter and render based on currentFilterDate
+                updateDbStatus('متصل', true); // Update status on successful data load
             }, (error) => {
                 console.error("Error fetching notes:", error);
                 Swal.fire({
@@ -113,6 +168,7 @@
                     title: 'خطأ في تحميل الملاحظات',
                     text: 'حدث خطأ أثناء تحميل الملاحظات: ' + error.message
                 });
+                updateDbStatus('خطأ في الاتصال', false); // Update status on error
             });
         }
 
@@ -597,8 +653,24 @@
                 }
             }
 
-            // Start Firebase authentication and data loading
-            initializeAuthAndFirestore();
+            // Start Firebase authentication and UI logic
+            initializeAuthAndUI();
+
+            // Handle login form submission
+            document.getElementById('loginForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const email = document.getElementById('loginEmail').value.trim();
+                const password = document.getElementById('loginPassword').value.trim();
+                if (email && password) {
+                    await loginUser(email, password);
+                } else {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'حقول فارغة',
+                        text: 'الرجاء إدخال البريد الإلكتروني وكلمة المرور.'
+                    });
+                }
+            });
         });
     </script>
     <style>
@@ -741,315 +813,277 @@
 
         /* Main Content Area */
         .main-content {
-            margin-right: 70px;
+            margin-right: 70px; /* Space for the sidebar */
             transition: margin-right 0.3s ease-in-out;
-            min-height: calc(100vh - 80px); /* Adjust height for navbar */
-            overflow-y: auto;
-            flex-grow: 1; /* Allow main content to grow */
+            padding: 1.5rem; /* Consistent padding */
+            flex-grow: 1; /* Allow content to grow and fill space */
+            width: calc(100% - 70px); /* Adjust width for fixed sidebar */
         }
-        .sidebar:hover ~ .main-content {
-            margin-right: 200px;
-        }
-
-        /* Task/Note Card Styling */
-        .task-card, .bg-white.p-6.rounded-lg.shadow-lg { /* Apply styles to both */
-            transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
-            border: 1px solid var(--border-color-light);
-            border-radius: 12px; /* More rounded corners */
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* Softer shadow */
-        }
-        .task-card:hover {
-            transform: translateY(-5px); /* More pronounced lift */
-            box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.1); /* Stronger shadow on hover */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 60px; /* Smaller sidebar on mobile */
+                height: auto;
+                bottom: 0;
+                top: auto;
+                right: 0;
+                left: 0;
+                flex-direction: row;
+                justify-content: space-around;
+                padding: 0.5rem 0;
+                box-shadow: 0 -4px 10px rgba(0,0,0,0.1);
+                border-top-left-radius: 12px;
+                border-top-right-radius: 12px;
+            }
+            .sidebar:hover {
+                width: 100%; /* No hover expansion on mobile for full width bottom nav */
+            }
+            .sidebar-item {
+                margin: 0;
+                padding: 10px 5px;
+                flex-direction: column; /* Stack icon and text */
+                font-size: 0.8rem;
+                border-radius: 0;
+            }
+            .sidebar-item i {
+                margin-left: 0;
+                margin-bottom: 5px;
+                font-size: 1.2rem;
+            }
+            .sidebar-text {
+                display: block; /* Always show text on mobile for better usability */
+                font-size: 0.75rem;
+            }
+            .sidebar:hover .sidebar-text {
+                display: block;
+            }
+            .main-content {
+                margin-right: 0; /* No right margin on mobile */
+                padding-bottom: 70px; /* Space for fixed bottom sidebar */
+                width: 100%; /* Full width on mobile */
+            }
+            .date-navigation {
+                flex-direction: column;
+                align-items: center;
+            }
+            .date-navigation button {
+                margin-bottom: 0.5rem;
+            }
         }
 
         /* Status Badges */
         .status-pending { background-color: var(--pending-color); color: white; }
         .status-in-progress { background-color: var(--in-progress-color); color: white; }
         .status-completed { background-color: var(--completed-color); color: white; }
-        .status-pending, .status-in-progress, .status-completed {
-            padding: 0.4rem 0.8rem;
-            border-radius: 9999px; /* Fully rounded */
-            font-size: 0.75rem;
-            font-weight: 700; /* Bold status text */
-        }
 
         /* Progress Bar */
-        .progress-bar {
-            height: 10px; /* Slightly thicker */
-            border-radius: 5px;
-            background-color: #e5e7eb;
+        .progress-bar-container {
+            background-color: #e0e0e0;
+            border-radius: 9999px; /* Tailwind's rounded-full */
+            height: 12px; /* Small height for progress bar */
             overflow: hidden;
+            margin-top: 0.5rem;
         }
-        .progress-fill {
-            height: 100%;
+        .progress-bar {
             background-color: var(--primary-color);
-            transition: width 0.5s ease;
-            border-radius: 5px; /* Match outer border radius */
+            height: 100%;
+            width: 0%;
+            transition: width 0.5s ease-in-out;
+            border-radius: 9999px; /* Inherit rounded-full */
+        }
+        .dark-mode .progress-bar-container {
+            background-color: #4a5568;
         }
 
-        /* Form Inputs and Buttons */
-        input[type="text"], input[type="date"], select {
-            border-radius: 8px; /* Rounded inputs */
-            padding: 0.75rem 1rem; /* More padding */
-            border: 1px solid var(--border-color-light);
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
-        }
-        input[type="text"]:focus, input[type="date"]:focus, select:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(227, 6, 19, 0.2); /* Soft focus ring */
-        }
-
-        button[type="submit"], .px-4.py-2.bg-blue-600, .px-4.py-2.bg-gray-300 {
-            border-radius: 8px;
-            padding: 0.75rem 1.5rem; /* More padding */
-            font-weight: 600; /* Bolder text */
-            transition: background-color 0.3s ease, transform 0.1s ease, box-shadow 0.3s ease;
-        }
-        button[type="submit"]:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(0, 128, 0, 0.2); /* Green shadow for add */
-        }
-        .bg-blue-600:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(59, 130, 246, 0.2); /* Blue shadow for save */
-        }
-        .bg-gray-300:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(107, 114, 128, 0.2); /* Gray shadow for cancel */
-        }
-
-        /* Modal Styling */
-        .modal {
-            background-color: rgba(0, 0, 0, 0.6); /* Darker overlay */
-            transition: opacity 0.3s ease;
-        }
-        .modal > div {
-            border-radius: 16px; /* Very rounded modal */
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.25); /* Stronger modal shadow */
-            animation: fadeInScale 0.3s ease-out; /* Add a subtle scale animation */
-        }
-        @keyframes fadeInScale {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-
-        /* Animations */
+        /* Fade-in animation for new items */
         .fade-in {
-            animation: fadeIn 0.5s ease-out forwards;
+            animation: fadeIn 0.5s ease-out;
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Responsive Adjustments */
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 100%;
-                height: auto;
-                position: relative;
-                right: auto;
-                top: auto;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-                display: flex;
-                flex-direction: row; /* Horizontal on small screens */
-                justify-content: space-around;
-                flex-wrap: wrap;
-                padding: 10px 0;
-                border-radius: 0; /* Remove border-radius for full width */
-                margin-bottom: 10px; /* Space below sidebar */
-            }
-            .sidebar:hover {
-                width: 100%; /* No width change on hover */
-            }
-            .sidebar-item {
-                flex: 1;
-                text-align: center;
-                padding: 10px 5px;
-                flex-direction: column; /* Stack icon and text */
-                margin: 5px; /* Adjust spacing */
-            }
-            .sidebar-item i {
-                margin: 0 0 5px 0; /* Adjust margin for stacking */
-            }
-            .sidebar-text {
-                display: block !important; /* Always show text on small screens */
-                font-size: 0.8rem;
-            }
-            .main-content {
-                margin-right: 0;
-                margin-top: 0; /* No margin-top needed if sidebar is relative */
-                padding-top: 0; /* Adjust padding if sidebar is above */
-                height: auto; /* Allow content to dictate height */
-                min-height: calc(100vh - 100px); /* Adjust for small screen navbar + simplified sidebar */
-            }
-            .sidebar:hover ~ .main-content {
-                margin-right: 0;
-            }
-            .navbar .text-xl {
-                font-size: 1.1rem;
-            }
-            .navbar img {
-                height: 30px; /* Smaller logo */
-            }
-            .navbar .hidden.md\\:block {
-                display: none; /* Hide full title on small screens */
-            }
-            .navbar .flex-col {
-                flex-direction: column;
-                align-items: flex-end;
-            }
-            /* Responsive form elements */
-            #taskForm, #noteForm {
-                flex-direction: column;
-            }
-            #taskInput, #noteInput, #taskStatus, #noteDate {
-                width: 100%;
-                margin-left: 0 !important; /* Override ml-2 on small screens */
-                margin-bottom: 0.75rem; /* Space between stacked inputs */
-            }
-            button[type="submit"] {
-                width: 100%;
-                margin-left: 0 !important; /* Override ml-2 on small screens */
-            }
-            .flex-wrap .mb-4.md\:mb-0 {
-                margin-bottom: 1rem !important; /* Adjust spacing for stacked items */
-            }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px; /* For horizontal scrollbars */
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-light);
+            border-radius: 10px;
+        }
+        .dark-mode::-webkit-scrollbar-track {
+            background: #2d3748;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #aaa;
+            border-radius: 10px;
+        }
+        .dark-mode::-webkit-scrollbar-thumb {
+            background: #6b7280;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #777;
+        }
+        .dark-mode::-webkit-scrollbar-thumb:hover {
+            background: #555;
         }
     </style>
 </head>
-<body class="bg-gray-100">
-    <!-- الشريط الجانبي -->
-    <div class="sidebar">
-        <div class="sidebar-item" onclick="toggleSection('tasksSection')">
-            <i class="fas fa-tasks"></i>
-            <span class="sidebar-text">المهام اليومية</span>
-        </div>
-        <div class="sidebar-item" onclick="toggleSection('notesSection')">
-            <i class="fas fa-sticky-note"></i>
-            <span class="sidebar-text">الملاحظات</span>
-        </div>
-        <div class="sidebar-item" onclick="toggleDarkMode()">
-            <i class="fas fa-moon"></i>
-            <span class="sidebar-text">الوضع الليلي</span>
+<body class="flex flex-col min-h-screen">
+    <!-- Login Section -->
+    <div id="authSection" class="flex flex-col items-center justify-center min-h-screen w-full bg-gray-100 dark:bg-gray-800 transition-colors duration-300">
+        <div class="bg-white dark:bg-gray-700 p-8 rounded-lg shadow-xl w-11/12 max-w-md border border-gray-200 dark:border-gray-600 text-center">
+            <img src="https://placehold.co/80x80/e30613/ffffff?text=SYM" alt="SYM Logo" class="w-20 h-20 rounded-full mx-auto mb-6 border-4 border-primary">
+            <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-6">مرحباً بك في SYM Algeria</h2>
+            <form id="loginForm" class="space-y-6">
+                <div>
+                    <label for="loginEmail" class="block text-gray-700 dark:text-gray-200 text-sm font-bold mb-2 text-right">البريد الإلكتروني:</label>
+                    <input type="email" id="loginEmail" placeholder="البريد الإلكتروني" class="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 dark:text-gray-200 leading-tight focus:outline-none focus:shadow-outline focus:ring-2 focus:ring-primary dark:bg-gray-600 dark:border-gray-500" value="kernani@symalgerie.dz" required>
+                </div>
+                <div>
+                    <label for="loginPassword" class="block text-gray-700 dark:text-gray-200 text-sm font-bold mb-2 text-right">كلمة المرور:</label>
+                    <input type="password" id="loginPassword" placeholder="كلمة المرور" class="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 dark:text-gray-200 leading-tight focus:outline-none focus:shadow-outline focus:ring-2 focus:ring-primary dark:bg-gray-600 dark:border-gray-500" value="halim123" required>
+                </div>
+                <button type="submit" class="bg-primary hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 w-full flex items-center justify-center">
+                    <i class="fas fa-sign-in-alt ml-2"></i> تسجيل الدخول
+                </button>
+            </form>
+            <p class="mt-6 text-gray-600 dark:text-gray-300 text-sm">
+                <i class="fas fa-info-circle ml-1"></i> ملاحظة: يجب إنشاء هذا الحساب في Firebase Authentication ليتمكن من تسجيل الدخول.
+            </p>
         </div>
     </div>
 
-    <!-- المحتوى الرئيسي -->
-    <div class="main-content">
-        <!-- شريط التنقل -->
-        <nav class="navbar p-4 text-white shadow-lg">
-            <div class="container mx-auto flex justify-between items-center flex-wrap">
-                <div class="flex items-center space-x-2">
-                    <img src="https://brandlogos.net/wp-content/uploads/2022/10/sym_-_sanyang_motor-logo_brandlogos.net_mre4v.png" alt="Logo" class="h-12 w-auto">
-                    <span class="text-xl font-bold hidden md:block">نظام إدارة المهام والملاحظات - SYM Algeria</span>
-                </div>
-                <div class="flex flex-col items-end">
-                    <span id="userIdDisplay" class="text-white text-xs md:text-sm mt-1"></span>
-                </div>
+    <!-- App Section (main content, initially hidden) -->
+    <div id="appSection" class="hidden flex-grow flex flex-col">
+        <!-- Navbar -->
+        <nav class="navbar flex justify-between items-center fixed top-0 left-0 w-full z-50">
+            <div class="flex items-center">
+                <img src="https://placehold.co/40x40/e30613/ffffff?text=SYM" alt="SYM Logo" class="w-10 h-10 rounded-full border-2 border-white">
+                <span class="text-xl font-bold mr-4">نظام إدارة المهام والملاحظات</span>
+            </div>
+            <div class="flex flex-col items-end">
+                <span id="currentFilterDateDisplay" class="text-sm font-semibold"></span>
+                <span id="userIdDisplay" class="text-xs text-gray-200">ID: ...</span>
+                <span id="dbStatus" class="text-xs text-gray-200">جاري الاتصال...</span>
             </div>
         </nav>
 
-        <!-- المحتوى الديناميكي -->
-        <div class="container mx-auto p-6">
-            <!-- تاريخ التصفية وأزرار التنقل -->
-            <div class="flex justify-center items-center mb-6 bg-white p-4 rounded-lg shadow-md">
-                <button onclick="goToPreviousDay()" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full mx-2 transition-all duration-300 transform hover:scale-105" aria-label="اليوم السابق">
-                    <i class="fas fa-arrow-left"></i>
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="flex flex-col flex-grow items-end justify-start pr-2">
+                <div class="sidebar-item" onclick="toggleSection('tasksSection')">
+                    <span class="sidebar-text">المهام</span>
+                    <i class="fas fa-tasks"></i>
+                </div>
+                <div class="sidebar-item" onclick="toggleSection('notesSection')">
+                    <span class="sidebar-text">الملاحظات</span>
+                    <i class="fas fa-clipboard"></i>
+                </div>
+                <div class="sidebar-item" onclick="toggleDarkMode()">
+                    <span class="sidebar-text">وضع الليل</span>
+                    <i class="fas fa-moon"></i>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content pt-20 pb-16 flex flex-col flex-grow">
+            <!-- Date Navigation -->
+            <div class="date-navigation flex justify-center items-center mb-6 bg-white p-4 rounded-lg shadow-md border border-gray-200 dark:bg-gray-700 dark:border-gray-600">
+                <button onclick="goToPreviousDay()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-full transition-colors duration-200 ml-2 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">
+                    <i class="fas fa-arrow-right"></i> السابق
                 </button>
-                <span id="currentFilterDateDisplay" class="text-xl font-bold text-gray-800"></span>
-                <button onclick="goToNextDay()" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full mx-2 transition-all duration-300 transform hover:scale-105" aria-label="اليوم التالي">
-                    <i class="fas fa-arrow-right"></i>
+                <button onclick="goToToday()" class="bg-primary hover:bg-red-700 text-white font-bold py-2 px-4 rounded-full transition-colors duration-200">
+                    اليوم <i class="fas fa-calendar-day mr-2"></i>
                 </button>
-                <button onclick="goToToday()" class="bg-green-500 hover:bg-green-600 text-white p-2 px-4 rounded-full mx-2 transition-all duration-300 transform hover:scale-105">
-                    اليوم
+                <button onclick="goToNextDay()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-full transition-colors duration-200 mr-2 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">
+                    التالي <i class="fas fa-arrow-left"></i>
                 </button>
             </div>
 
-            <!-- قسم المهام اليومية -->
-            <div id="tasksSection">
-                <div class="bg-white p-6 rounded-lg shadow-lg mb-6">
-                    <div class="flex flex-wrap justify-between items-center mb-6">
-                        <h2 class="text-xl font-semibold text-gray-700 mb-4 md:mb-0">
-                            <i class="fas fa-tasks ml-2"></i> المهام اليومية
-                        </h2>
-                        <div class="flex items-center w-full md:w-auto justify-end">
-                            <span class="ml-2 md:mr-2">نسبة الإنجاز:</span>
-                            <div class="w-24 md:w-32 bg-gray-200 rounded-full h-2.5">
-                                <div id="progressBar" class="progress-fill h-2.5 rounded-full" style="width: 0%"></div>
-                            </div>
-                            <span id="progressPercentage" class="ml-2 md:mr-2 font-bold">0%</span>
+            <!-- Tasks Section -->
+            <section id="tasksSection" class="flex-grow">
+                <div class="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-xl border border-gray-200 dark:border-gray-600 mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4 flex items-center">
+                        <i class="fas fa-tasks ml-3 text-primary"></i> إدارة المهام
+                    </h2>
+                    <!-- Progress Bar -->
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-md font-semibold text-gray-700 dark:text-gray-200">تقدم المهام اليومية</span>
+                            <span id="progressPercentage" class="text-md font-semibold text-gray-700 dark:text-gray-200">0%</span>
+                        </div>
+                        <div class="progress-bar-container">
+                            <div id="progressBar" class="progress-bar"></div>
                         </div>
                     </div>
 
-                    <!-- نموذج إضافة مهمة جديدة -->
-                    <form id="taskForm" class="mb-6 flex flex-wrap items-center">
-                        <input type="text" id="taskInput" placeholder="أدخل المهمة الجديدة..." class="flex-grow p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2 md:mb-0 md:ml-2 w-full md:w-auto" required>
-                        <select id="taskStatus" class="p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2 md:mb-0 md:ml-2 w-full md:w-auto">
+                    <form id="taskForm" class="mb-6 flex flex-col sm:flex-row gap-4">
+                        <input type="text" id="taskInput" placeholder="أدخل مهمة جديدة..." class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-200" required>
+                        <select id="taskStatus" class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 sm:w-auto dark:bg-gray-600 dark:border-gray-500 dark:text-gray-200">
                             <option value="pending">قيد الانتظار</option>
                             <option value="in-progress">قيد التنفيذ</option>
                             <option value="completed">مكتملة</option>
                         </select>
-                        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white p-3 rounded transition w-full md:w-auto">
-                            <i class="fas fa-plus ml-2"></i> إضافة
+                        <button type="submit" class="bg-primary hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center">
+                            <i class="fas fa-plus ml-2"></i> إضافة مهمة
                         </button>
                     </form>
 
-                    <!-- قائمة المهام -->
-                    <div id="tasksList" class="space-y-3">
-                        <!-- سيتم ملؤه ديناميكيا -->
+                    <div id="tasksList" class="space-y-4">
+                        <!-- Tasks will be loaded here -->
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <!-- قسم الملاحظات -->
-            <div id="notesSection" class="hidden">
-                <div class="bg-white p-6 rounded-lg shadow-lg">
-                    <h2 class="text-xl font-semibold text-gray-700 mb-6">
-                        <i class="fas fa-sticky-note ml-2"></i> الملاحظات
+            <!-- Notes Section (hidden by default) -->
+            <section id="notesSection" class="hidden flex-grow">
+                <div class="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-xl border border-gray-200 dark:border-gray-600 mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4 flex items-center">
+                        <i class="fas fa-clipboard ml-3 text-primary"></i> إدارة الملاحظات
                     </h2>
 
-                    <!-- نموذج إضافة ملاحظة جديدة -->
-                    <form id="noteForm" class="mb-6 flex flex-wrap items-center">
-                        <input type="text" id="noteInput" placeholder="أدخل ملاحظة جديدة..." class="flex-grow p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2 md:mb-0 md:ml-2 w-full md:w-auto" required>
-                        <input type="date" id="noteDate" class="p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2 md:mb-0 md:ml-2 w-full md:w-auto">
-                        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white p-3 rounded transition w-full md:w-auto">
-                            <i class="fas fa-plus ml-2"></i> إضافة
+                    <form id="noteForm" class="mb-6 flex flex-col sm:flex-row gap-4">
+                        <textarea id="noteInput" placeholder="اكتب ملاحظة جديدة..." class="flex-grow p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 dark:bg-gray-600 dark:border-gray-500 dark:text-gray-200" rows="3" required></textarea>
+                        <input type="date" id="noteDate" class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200 sm:w-auto dark:bg-gray-600 dark:border-gray-500 dark:text-gray-200">
+                        <button type="submit" class="bg-primary hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 flex items-center justify-center">
+                            <i class="fas fa-plus ml-2"></i> إضافة ملاحظة
                         </button>
                     </form>
 
-                    <!-- قائمة الملاحظات -->
-                    <div id="notesList" class="space-y-3">
-                        <!-- سيتم ملؤه ديناميكيا -->
+                    <div id="notesList" class="space-y-4">
+                        <!-- Notes will be loaded here -->
                     </div>
                 </div>
-            </div>
-        </div>
+            </section>
+        </main>
     </div>
 
-    <!-- نافذة تعديل المهمة -->
-    <div id="editTaskModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden modal">
-        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
-            <h3 class="text-lg font-semibold mb-4">تعديل المهمة</h3>
+    <!-- Edit Task Modal -->
+    <div id="editTaskModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white dark:bg-gray-700 p-8 rounded-lg shadow-xl w-11/12 max-w-md border border-gray-200 dark:border-gray-600">
+            <h3 class="text-xl font-bold text-gray-800 dark:text-white mb-4">تعديل المهمة</h3>
             <form id="editTaskForm">
                 <input type="hidden" id="editTaskId">
                 <div class="mb-4">
-                    <input type="text" id="editTaskText" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    <label for="editTaskText" class="block text-gray-700 dark:text-gray-200 text-sm font-bold mb-2">نص المهمة:</label>
+                    <input type="text" id="editTaskText" class="shadow appearance-none border rounded-lg w-full py-2 px-3 text-gray-700 dark:text-gray-200 leading-tight focus:outline-none focus:shadow-outline focus:ring-2 focus:ring-primary dark:bg-gray-600 dark:border-gray-500" required>
                 </div>
                 <div class="mb-4">
-                    <select id="editTaskStatus" class="w-full p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <label for="editTaskStatus" class="block text-gray-700 dark:text-gray-200 text-sm font-bold mb-2">الحالة:</label>
+                    <select id="editTaskStatus" class="shadow border rounded-lg w-full py-2 px-3 text-gray-700 dark:text-gray-200 leading-tight focus:outline-none focus:shadow-outline focus:ring-2 focus:ring-primary dark:bg-gray-600 dark:border-gray-500">
                         <option value="pending">قيد الانتظار</option>
                         <option value="in-progress">قيد التنفيذ</option>
                         <option value="completed">مكتملة</option>
                     </select>
                 </div>
-                <div class="flex justify-end space-x-2">
-                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="closeEditModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg transition-colors duration-200 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">
                         إلغاء
                     </button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                    <button type="submit" class="bg-primary hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
                         حفظ التعديلات
                     </button>
                 </div>
