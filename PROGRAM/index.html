@@ -11,9 +11,10 @@
 
     <!-- Firebase SDKs -->
     <script type="module">
+        // Import Realtime Database functions
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, addDoc, deleteDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getDatabase, ref, push, remove, onValue, set } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js"; // Changed for Realtime Database
 
         // Global variables for Firebase (MUST BE USED as per instructions)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
@@ -23,16 +24,16 @@
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        const db = getFirestore(app);
+        const db = getDatabase(app, "https://commercial-3ef19-default-rtdb.firebaseio.com/"); // Initialize Realtime Database with specified URL
 
         // Global variables for data storage and user management
         let customerAppointments = [];
         let userId = null;
         let isAuthReady = false;
-        let currentWeekStartDate; // Changed: This will now be loaded from localStorage or set
+        let currentWeekStartDate; // This will now be loaded from localStorage or set
 
-        // Reference to Firestore collection for customer appointments
-        let appointmentsCollectionRef;
+        // Reference to Realtime Database path for customer appointments
+        let appointmentsRef; // Changed to appointmentsRef for Realtime Database
 
         // Days of the week in English (internal for matching Date objects)
         const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'];
@@ -119,18 +120,20 @@
 
         /**
          * Initializes Firebase authentication and sets up the auth state listener.
-         * Once authenticated, it sets the userId and initializes Firestore references.
+         * Once authenticated, it sets the userId and initializes Realtime Database references.
          */
-        async function initializeAuthAndFirestore() {
+        async function initializeAuthAndFirestore() { // Renamed from initializeAuthAndFirestore to reflect database change
             updateConnectionStatus('جاري الاتصال...', 'text-yellow-500', 'bg-yellow-500');
 
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
                     userId = user.uid;
-                    appointmentsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/customerAppointments`);
+                    // Realtime Database path: artifacts/{appId}/users/{userId}/customerAppointments
+                    appointmentsRef = ref(db, `artifacts/${appId}/users/${userId}/customerAppointments`);
                     isAuthReady = true;
                     document.getElementById('userIdDisplay').textContent = `ID: ${userId}`;
                     updateConnectionStatus('متصل', 'text-green-500', 'bg-green-500');
+                    console.log('Firebase initialized. userId:', userId, 'appointmentsRef path:', appointmentsRef.toString());
 
                     // Load currentWeekStartDate from localStorage or default to current week
                     const storedWeek = localStorage.getItem('currentWeekStartDate');
@@ -163,7 +166,7 @@
         }
 
         /**
-         * Loads customer appointments from Firestore in real-time.
+         * Loads customer appointments from Realtime Database in real-time.
          */
         function loadAppointments() {
             if (!isAuthReady) {
@@ -181,9 +184,17 @@
                 }
             });
             
-            // The onSnapshot listener now correctly observes the collection and triggers renderAppointments
-            onSnapshot(query(appointmentsCollectionRef), (snapshot) => {
-                customerAppointments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            // The onValue listener now correctly observes the Realtime Database and triggers renderAppointments
+            onValue(appointmentsRef, (snapshot) => {
+                const data = snapshot.val();
+                customerAppointments = [];
+                if (data) {
+                    // Convert the object of appointments from Realtime DB into an array
+                    for (const id in data) {
+                        customerAppointments.push({ id, ...data[id] });
+                    }
+                }
+                console.log('Appointments loaded:', customerAppointments);
                 renderAppointments(); // Render based on the current filtered week
             }, (error) => {
                 console.error("Error fetching appointments:", error);
@@ -254,7 +265,7 @@
 
                 if (dayList) { // Ensure dayList exists before proceeding
                     if (appointmentsForDay.length === 0) {
-                        dayList.innerHTML = `<div class="text-center text-gray-400 text-sm">لا توجد مواعيد لهذا اليوم.</div>`;
+                        dayList.innerHTML = `<div class="text-center text-gray-400 text-sm py-4">لا توجد مواعيد لهذا اليوم.</div>`;
                     } else {
                         appointmentsForDay.forEach(appointment => {
                             const appointmentElement = document.createElement('div');
@@ -266,7 +277,7 @@
                                 </div>
                                 <div class="flex items-center space-x-2 mr-2">
                                     <button onclick="generateFollowUpMessage('${appointment.customerName}', '${appointment.appointmentTime}')" class="text-green-600 hover:text-green-800 transition-colors duration-200 p-1 rounded-full hover:bg-green-100 dark:hover:bg-green-900" aria-label="إنشاء رسالة متابعة">
-                                        <i class="fas fa-envelope"></i> ✨
+                                        <i class="fas fa-envelope"></i>
                                     </button>
                                     <button onclick="deleteAppointment('${appointment.id}')" class="text-red-600 hover:text-red-800 transition-colors duration-200 p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900" aria-label="حذف الموعد">
                                         <i class="fas fa-trash"></i>
@@ -281,7 +292,7 @@
         }
 
         /**
-         * Handles adding a new customer appointment to Firestore.
+         * Handles adding a new customer appointment to Realtime Database.
          * The appointment is associated with the current week being viewed.
          * @param {string} day - The day for the appointment (e.g., 'Sunday').
          */
@@ -315,11 +326,17 @@
                 createdAt: appointmentDate.toISOString() // Store the date of the week being viewed
             };
 
+            console.log('Attempting to add appointment:', newAppointment);
+            console.log('Current appointmentsRef:', appointmentsRef ? appointmentsRef.toString() : 'undefined');
+
             try {
-                await addDoc(appointmentsCollectionRef, newAppointment);
+                // Use push for Realtime Database to generate a unique key
+                await push(appointmentsRef, newAppointment);
                 customerNameInput.value = ''; // Clear input fields
                 appointmentTimeInput.value = '';
+                console.log('Appointment added successfully!');
             } catch (error) {
+                console.error('Failed to add appointment:', error);
                 Swal.fire({
                     icon: 'error',
                     title: 'خطأ',
@@ -329,7 +346,7 @@
         };
 
         /**
-         * Deletes a customer appointment from Firestore after user confirmation.
+         * Deletes a customer appointment from Realtime Database after user confirmation.
          * @param {string} appointmentId - The ID of the appointment to delete.
          */
         window.deleteAppointment = function(appointmentId) {
@@ -343,10 +360,12 @@
                 confirmButtonColor: '#d33'
             }).then(async (result) => {
                 if (result.isConfirmed && isAuthReady) {
-                    const appointmentDocRef = doc(db, `artifacts/${appId}/users/${userId}/customerAppointments`, appointmentId);
+                    const appointmentToDeleteRef = ref(db, `artifacts/${appId}/users/${userId}/customerAppointments/${appointmentId}`); // Correct path for deletion
                     try {
-                        await deleteDoc(appointmentDocRef);
+                        await remove(appointmentToDeleteRef); // Use remove for Realtime Database
+                        console.log('Appointment deleted successfully!');
                     } catch (error) {
+                        console.error('Failed to delete appointment:', error);
                         Swal.fire({
                             icon: 'error',
                             title: 'خطأ',
@@ -407,30 +426,6 @@
                 return "حدث خطأ أثناء الاتصال بالذكاء الاصطناعي: " + error.message;
             }
         }
-
-        /**
-         * Suggests appointment details for a given customer and time using the Gemini API.
-         * @param {string} customerName - The name of the customer.
-         * @param {string} appointmentTime - The time of the appointment.
-         */
-        // window.suggestAppointmentDetails = async function(customerName, appointmentTime) {
-        //     Swal.fire({
-        //         title: 'جاري اقتراح تفاصيل الموعد ✨',
-        //         html: '<i class="fas fa-spinner fa-spin text-4xl text-purple-500"></i><p class="mt-4 text-lg">الرجاء الانتظار قليلاً...</p>',
-        //         allowOutsideClick: false,
-        //         showConfirmButton: false
-        //     });
-
-        //     const prompt = `بالنظر إلى موعد مع الزبون "${customerName}" في تمام الساعة ${appointmentTime}، اقترح 3-5 نقاط موجزة لتفاصيل الموعد أو جدول الأعمال المحتمل، مع الأخذ في الاعتبار أن هذا موعد عمل.`;
-        //     const result = await callGeminiAPI(prompt);
-
-        //     Swal.fire({
-        //         title: 'تفاصيل الموعد المقترحة ✨',
-        //         html: `<div class="text-right">${result.replace(/\n/g, '<br>')}</div>`, // Handle newlines
-        //         icon: 'info',
-        //         confirmButtonText: 'حسنًا'
-        //     });
-        // };
 
         /**
          * Generates a follow-up message for a given customer and appointment time using the Gemini API.
@@ -503,7 +498,7 @@
                     moonIcon.classList.replace('fa-moon', 'fa-sun');
                 }
             }
-            initializeAuthAndFirestore();
+            initializeAuthAndFirestore(); // Call the updated initialization function
         });
     </script>
     <style>
@@ -615,6 +610,8 @@
             display: flex;
             flex-direction: column;
             padding-top: 1rem;
+            border-top-right-radius: 12px; /* Rounded corners for the sidebar */
+            border-bottom-right-radius: 12px;
         }
         .sidebar:hover {
             width: 200px;
@@ -697,254 +694,215 @@
         button.add-appointment-btn:hover {
             background-color: #45a049;
             transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(76, 175, 80, 0.2);
+            box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
         }
-        .text-red-600.hover\:text-red-800:hover {
-            background-color: rgba(220, 38, 38, 0.1); /* Light red background on hover for trash icon */
-        }
-        .dark-mode .text-red-600.hover\:text-red-800:hover {
-            background-color: rgba(220, 38, 38, 0.2);
+        button.add-appointment-btn:active {
+            transform: translateY(0);
+            box-shadow: none;
         }
 
-        /* Animations */
-        .fade-in {
-            animation: fadeIn 0.5s ease-out forwards;
+        /* Week Navigation Buttons */
+        .week-navigation button {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background-color 0.3s ease, transform 0.1s ease;
         }
+        .week-navigation button:hover {
+            background-color: #c00510;
+            transform: translateY(-1px);
+        }
+        .week-navigation button:active {
+            transform: translateY(0);
+        }
+
+        /* Appointments Grid */
+        .appointments-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Responsive columns */
+            gap: 1.5rem; /* Space between columns */
+        }
+
+        /* Appointment Card Fade-in Animation */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
 
-        /* Responsive Adjustments */
+        /* Responsive adjustments */
         @media (max-width: 768px) {
             .sidebar {
-                width: 100%;
-                height: auto;
-                position: relative;
-                right: auto;
-                top: auto;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-                display: flex;
-                flex-direction: row; /* Horizontal on small screens */
-                justify-content: space-around;
-                flex-wrap: wrap;
-                padding: 10px 0;
-                border-radius: 0; /* Remove border-radius for full width */
-                margin-bottom: 10px; /* Space below sidebar */
+                width: 50px;
+                padding-top: 0.5rem;
             }
             .sidebar:hover {
-                width: 100%; /* No width change on hover */
+                width: 150px;
             }
             .sidebar-item {
-                flex: 1;
-                text-align: center;
-                padding: 10px 5px;
-                flex-direction: column; /* Stack icon and text */
-                margin: 5px; /* Adjust spacing */
+                padding: 12px 10px;
+                margin: 3px 5px;
             }
             .sidebar-item i {
-                margin: 0 0 5px 0; /* Adjust margin for stacking */
-            }
-            .sidebar-text {
-                display: block !important; /* Always show text on small screens */
-                font-size: 0.8rem;
+                margin-left: 10px;
+                font-size: 1.2rem;
             }
             .main-content {
-                margin-right: 0;
-                margin-top: 0;
-                padding-top: 0;
-                height: auto;
-                min-height: calc(100vh - 100px);
+                margin-right: 50px;
             }
             .sidebar:hover ~ .main-content {
-                margin-right: 0;
+                margin-right: 150px;
             }
-            .navbar .text-xl {
-                font-size: 1.1rem;
-            }
-            .navbar img {
-                height: 30px;
-            }
-            .navbar .hidden.md\\:block {
-                display: none;
-            }
-            .navbar .flex-col {
+            .navbar .flex-row {
                 flex-direction: column;
-                align-items: flex-end;
+                align-items: center;
             }
-            /* Adjustments for the new 5-column layout on small screens */
-            .appointments-grid {
-                grid-template-columns: 1fr; /* Stack columns on small screens */
+            .navbar .flex-row > div {
+                margin-bottom: 0.5rem;
+            }
+            .week-navigation {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            .week-navigation button, .week-navigation span {
+                width: 100%;
+                text-align: center;
             }
         }
-
-        /* New styles for professional connection status */
-        .connection-status {
-            display: flex;
-            align-items: center;
-            font-size: 0.875rem; /* text-sm */
-            font-weight: 500; /* Medium weight */
-            color: white; /* Make text white for visibility in primary-color navbar */
-            margin-top: 0.25rem; /* Equivalent to mt-1 */
-        }
-        .connection-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-left: 8px; /* space-x-2 equivalent */
-            transition: background-color 0.3s ease;
-        }
-        /* Specific colors for dot and text within navbar */
-        .text-yellow-500 { color: #f59e0b; }
-        .bg-yellow-500 { background-color: #f59e0b; }
-        .text-green-500 { color: #10b981; }
-        .bg-green-500 { background-color: #10b981; }
-        .text-red-500 { color: #ef4444; }
-        .bg-red-500 { background-color: #ef4444; }
     </style>
 </head>
-<body class="bg-gray-100">
-    <!-- الشريط الجانبي -->
+<body class="flex flex-col min-h-screen">
+
+    <!-- Sidebar -->
     <div class="sidebar">
-        <!-- زر للعودة إلى صفحة المهام والملاحظات الرئيسية (index.html) -->
-        <a href="index.html" class="sidebar-item">
-            <i class="fas fa-tasks"></i>
-            <span class="sidebar-text">المهام والملاحظات</span>
-        </a>
-        <!-- زر لصفحة جدول المواعيد (هذه الصفحة) -->
-        <a href="customer-appointments-page.html" class="sidebar-item">
-            <i class="fas fa-calendar-alt"></i>
-            <span class="sidebar-text">المواعيد</span>
-        </a>
-        <!-- زر لصفحة البرنامج الجديدة -->
-        <a href="program-page.html" class="sidebar-item">
-            <i class="fas fa-list-alt"></i>
-            <span class="sidebar-text">البرنامج</span>
-        </a>
-        <!-- زر لصفحة الشكاوى الجديدة -->
-        <a href="reclamation-page.html" class="sidebar-item">
-            <i class="fas fa-exclamation-triangle"></i>
-            <span class="sidebar-text">الشكاوى</span>
-        </a>
-        <div class="sidebar-item" onclick="toggleDarkMode()">
-            <i class="fas fa-moon"></i>
-            <span class="sidebar-text">الوضع الليلي</span>
+        <div class="sidebar-item">
+            <i class="fas fa-home"></i>
+            <span class="sidebar-text">الرئيسية</span>
+        </div>
+        <div class="sidebar-item" onclick="goToCurrentWeek()" aria-label="الأسبوع الحالي">
+            <i class="fas fa-calendar-week"></i>
+            <span class="sidebar-text">الأسبوع الحالي</span>
+        </div>
+        <div class="sidebar-item" onclick="toggleDarkMode()" aria-label="وضع الليل/النهار">
+            <i class="fas fa-moon"></i> <!-- Initial icon, changes to fa-sun in JS -->
+            <span class="sidebar-text">وضع الليل/النهار</span>
+        </div>
+        <div class="sidebar-item">
+            <i class="fas fa-info-circle"></i>
+            <span class="sidebar-text">معلومات</span>
+        </div>
+        <!-- Connection Status Indicator -->
+        <div class="mt-auto p-2 text-center text-sm">
+            <div class="flex items-center justify-center">
+                <span id="connectionStatusDot" class="w-3 h-3 rounded-full ml-2"></span>
+                <span id="connectionStatusText" class="text-gray-600 dark:text-gray-400">جاري الاتصال...</span>
+            </div>
+            <p id="userIdDisplay" class="text-xs text-gray-500 dark:text-gray-400 mt-1 break-all">ID: ---</p>
         </div>
     </div>
 
-    <!-- المحتوى الرئيسي -->
-    <div class="main-content">
-        <!-- شريط التنقل -->
-        <nav class="navbar p-4 text-white shadow-lg">
-            <div class="container mx-auto flex justify-between items-center flex-wrap">
-                <div class="flex items-center space-x-2">
-                    <img src="https://brandlogos.net/wp-content/uploads/2022/10/sym_-_sanyang_motor-logo_brandlogos.net_mre4v.png" alt="Logo" class="h-12 w-auto">
-                    <span class="text-xl font-bold hidden md:block">جدول مواعيد العملاء - SYM Algeria</span>
-                </div>
-                <div class="flex flex-col items-end">
-                    <span id="userIdDisplay" class="text-white text-xs md:text-sm mt-1"></span>
-                    <!-- Professional Connection Status Indicator -->
-                    <div class="connection-status">
-                        <div id="connectionStatusDot" class="connection-dot bg-yellow-500"></div>
-                        <span id="connectionStatusText" class="font-medium text-white">جاري الاتصال...</span>
-                    </div>
-                </div>
+    <!-- Main Content -->
+    <div class="main-content flex-grow flex flex-col">
+        <!-- Navbar -->
+        <nav class="navbar flex items-center justify-between p-4 shadow-md rounded-b-lg">
+            <div class="flex items-center">
+                <img src="https://placehold.co/50x50/e30613/ffffff?text=SYM" alt="SYM Algeria Logo" class="w-12 h-12 rounded-lg ml-3">
+                <h1 class="text-2xl font-bold">جدول مواعيد العملاء</h1>
             </div>
         </nav>
 
-        <!-- المحتوى الديناميكي -->
-        <div class="container mx-auto p-6">
-            <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-100 text-center mb-4">
-                <i class="fas fa-calendar-alt ml-3 text-primary-color"></i> جدول مواعيد العملاء (الأحد - الخميس)
-            </h2>
-
-            <!-- أزرار التنقل بين الأسابيع وعرض الأسبوع الحالي -->
-            <div class="flex justify-center items-center mb-6 bg-white p-4 rounded-lg shadow-md">
-                <button onclick="goToPreviousWeek()" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full mx-2 transition-all duration-300 transform hover:scale-105" aria-label="الأسبوع السابق">
-                    <i class="fas fa-arrow-left"></i>
+        <div class="container mx-auto p-6 flex-grow">
+            <!-- Week Navigation -->
+            <div class="week-navigation flex justify-between items-center bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md mb-6">
+                <button onclick="goToPreviousWeek()" class="flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200" aria-label="الأسبوع السابق">
+                    <i class="fas fa-chevron-right text-white"></i>
+                    <span class="text-white">الأسبوع السابق</span>
                 </button>
                 <span id="currentWeekDisplay" class="text-xl font-bold text-gray-800 dark:text-gray-200"></span>
-                <button onclick="goToNextWeek()" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full mx-2 transition-all duration-300 transform hover:scale-105" aria-label="الأسبوع التالي">
-                    <i class="fas fa-arrow-right"></i>
-                </button>
-                <button onclick="goToCurrentWeek()" class="bg-green-500 hover:bg-green-600 text-white p-2 px-4 rounded-full mx-2 transition-all duration-300 transform hover:scale-105">
-                    الأسبوع الحالي
+                <button onclick="goToNextWeek()" class="flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200" aria-label="الأسبوع التالي">
+                    <span class="text-white">الأسبوع التالي</span>
+                    <i class="fas fa-chevron-left text-white"></i>
                 </button>
             </div>
 
-            <div id="appointmentsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-                <!-- Sunday Column -->
-                <div class="day-card">
-                    <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200">الأحد</h3>
-                    <div class="flex flex-col gap-3">
-                        <input type="text" id="SundayCustomerName" placeholder="اسم الزبون" class="p-2 border rounded">
-                        <input type="time" id="SundayAppointmentTime" class="p-2 border rounded">
+            <!-- Appointments Grid -->
+            <div class="appointments-grid">
+                <!-- Sunday -->
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                    <h2 class="text-center text-xl font-bold text-gray-800 dark:text-gray-200 mb-4">الأحد</h2>
+                    <div class="mb-4">
+                        <input type="text" id="SundayCustomerName" placeholder="اسم الزبون" class="mb-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600">
+                        <input type="time" id="SundayAppointmentTime" class="mb-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600">
                         <button onclick="addCustomerAppointment('Sunday')" class="add-appointment-btn">
                             <i class="fas fa-plus ml-2"></i> إضافة موعد
                         </button>
                     </div>
-                    <div id="SundayList" class="mt-4 space-y-2 flex-grow">
-                        <!-- المواعيد ستظهر هنا -->
+                    <div id="SundayList" class="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
+                        <!-- Appointments will be rendered here -->
                     </div>
                 </div>
 
-                <!-- Monday Column -->
-                <div class="day-card">
-                    <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200">الاثنين</h3>
-                    <div class="flex flex-col gap-3">
-                        <input type="text" id="MondayCustomerName" placeholder="اسم الزبون" class="p-2 border rounded">
-                        <input type="time" id="MondayAppointmentTime" class="p-2 border rounded">
+                <!-- Monday -->
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                    <h2 class="text-center text-xl font-bold text-gray-800 dark:text-gray-200 mb-4">الاثنين</h2>
+                    <div class="mb-4">
+                        <input type="text" id="MondayCustomerName" placeholder="اسم الزبون" class="mb-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600">
+                        <input type="time" id="MondayAppointmentTime" class="mb-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600">
                         <button onclick="addCustomerAppointment('Monday')" class="add-appointment-btn">
                             <i class="fas fa-plus ml-2"></i> إضافة موعد
                         </button>
                     </div>
-                    <div id="MondayList" class="mt-4 space-y-2 flex-grow">
-                        <!-- المواعيد ستظهر هنا -->
+                    <div id="MondayList" class="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
+                        <!-- Appointments will be rendered here -->
                     </div>
                 </div>
 
-                <!-- Tuesday Column -->
-                <div class="day-card">
-                    <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200">الثلاثاء</h3>
-                    <div class="flex flex-col gap-3">
-                        <input type="text" id="TuesdayCustomerName" placeholder="اسم الزبون" class="p-2 border rounded">
-                        <input type="time" id="TuesdayAppointmentTime" class="p-2 border rounded">
+                <!-- Tuesday -->
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                    <h2 class="text-center text-xl font-bold text-gray-800 dark:text-gray-200 mb-4">الثلاثاء</h2>
+                    <div class="mb-4">
+                        <input type="text" id="TuesdayCustomerName" placeholder="اسم الزبون" class="mb-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600">
+                        <input type="time" id="TuesdayAppointmentTime" class="mb-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600">
                         <button onclick="addCustomerAppointment('Tuesday')" class="add-appointment-btn">
                             <i class="fas fa-plus ml-2"></i> إضافة موعد
                         </button>
                     </div>
-                    <div id="TuesdayList" class="mt-4 space-y-2 flex-grow">
-                        <!-- المواعيد ستظهر هنا -->
+                    <div id="TuesdayList" class="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
+                        <!-- Appointments will be rendered here -->
                     </div>
                 </div>
 
-                <!-- Wednesday Column -->
-                <div class="day-card">
-                    <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200">الأربعاء</h3>
-                    <div class="flex flex-col gap-3">
-                        <input type="text" id="WednesdayCustomerName" placeholder="اسم الزبون" class="p-2 border rounded">
-                        <input type="time" id="WednesdayAppointmentTime" class="p-2 border rounded">
+                <!-- Wednesday -->
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                    <h2 class="text-center text-xl font-bold text-gray-800 dark:text-gray-200 mb-4">الأربعاء</h2>
+                    <div class="mb-4">
+                        <input type="text" id="WednesdayCustomerName" placeholder="اسم الزبون" class="mb-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600">
+                        <input type="time" id="WednesdayAppointmentTime" class="mb-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600">
                         <button onclick="addCustomerAppointment('Wednesday')" class="add-appointment-btn">
                             <i class="fas fa-plus ml-2"></i> إضافة موعد
                         </button>
                     </div>
-                    <div id="WednesdayList" class="mt-4 space-y-2 flex-grow">
-                        <!-- المواعيد ستظهر هنا -->
+                    <div id="WednesdayList" class="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
+                        <!-- Appointments will be rendered here -->
                     </div>
                 </div>
 
-                <!-- Thursday Column -->
-                <div class="day-card">
-                    <h3 class="text-xl font-semibold text-gray-700 dark:text-gray-200">الخميس</h3>
-                    <div class="flex flex-col gap-3">
-                        <input type="text" id="ThursdayCustomerName" placeholder="اسم الزبون" class="p-2 border rounded">
-                        <input type="time" id="ThursdayAppointmentTime" class="p-2 border rounded">
+                <!-- Thursday -->
+                <div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+                    <h2 class="text-center text-xl font-bold text-gray-800 dark:text-gray-200 mb-4">الخميس</h2>
+                    <div class="mb-4">
+                        <input type="text" id="ThursdayCustomerName" placeholder="اسم الزبون" class="mb-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600">
+                        <input type="time" id="ThursdayAppointmentTime" class="mb-2 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600">
                         <button onclick="addCustomerAppointment('Thursday')" class="add-appointment-btn">
                             <i class="fas fa-plus ml-2"></i> إضافة موعد
                         </button>
                     </div>
-                    <div id="ThursdayList" class="mt-4 space-y-2 flex-grow">
-                        <!-- المواعيد ستظهر هنا -->
+                    <div id="ThursdayList" class="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
+                        <!-- Appointments will be rendered here -->
                     </div>
                 </div>
             </div>
