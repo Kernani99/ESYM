@@ -76,7 +76,9 @@
                         Swal.fire({
                             icon: 'error',
                             title: 'خطأ في المصادقة الأولية',
-                            text: 'فشل تسجيل الدخول التلقائي: ' + error.message
+                            text: 'فشل تسجيل الدخول التلقائي: ' + error.message,
+                            background: 'var(--card-bg-light)', // Ensure Swal theme matches
+                            color: 'var(--text-color-light)'
                         });
                     }
                 }
@@ -90,18 +92,50 @@
          */
         async function loginUser(email, password) {
             try {
+                // Show loading spinner while authenticating
+                Swal.fire({
+                    title: 'جاري تسجيل الدخول...',
+                    html: '<i class="fas fa-spinner fa-spin text-4xl text-primary mt-4"></i>',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    background: 'var(--card-bg-light)',
+                    color: 'var(--text-color-light)',
+                    willOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
                 await signInWithEmailAndPassword(auth, email, password);
+                
+                // Close loading spinner and show success
+                Swal.close();
                 Swal.fire({
                     icon: 'success',
                     title: 'تم تسجيل الدخول بنجاح!',
-                    text: 'مرحباً بك في نظام إدارة المهام والملاحظات.'
+                    text: 'مرحباً بك في نظام إدارة المهام والملاحظات.',
+                    showConfirmButton: false,
+                    timer: 1500,
+                    background: 'var(--card-bg-light)',
+                    color: 'var(--text-color-light)'
                 });
             } catch (error) {
+                // Close loading spinner and show error
+                Swal.close();
                 console.error("Error signing in with email and password:", error);
+                
+                let errorMessage = 'خطأ في البريد الإلكتروني أو كلمة المرور. يرجى التأكد من إنشاء حسابك في Firebase Authentication.';
+                if (error.code === 'auth/operation-not-allowed') {
+                    errorMessage = 'عملية تسجيل الدخول هذه غير مسموح بها. الرجاء التأكد من تمكين طريقة تسجيل الدخول "البريد الإلكتروني/كلمة المرور" في إعدادات Firebase Authentication لمشروعك.';
+                } else if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+                    errorMessage = 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
+                }
+
                 Swal.fire({
                     icon: 'error',
                     title: 'فشل تسجيل الدخول',
-                    text: 'خطأ في البريد الإلكتروني أو كلمة المرور. يرجى التأكد من إنشاء حسابك في Firebase Authentication.'
+                    text: errorMessage,
+                    background: 'var(--card-bg-light)',
+                    color: 'var(--text-color-light)'
                 });
             }
         }
@@ -152,7 +186,9 @@
                 Swal.fire({
                     icon: 'error',
                     title: 'خطأ في تحميل المهام',
-                    text: 'حدث خطأ أثناء تحميل المهام: ' + error.message
+                    text: 'حدث خطأ أثناء تحميل المهام: ' + error.message,
+                    background: 'var(--card-bg-light)',
+                    color: 'var(--text-color-light)'
                 });
                 updateDbStatus('خطأ في الاتصال', false); // Update status on error
             });
@@ -167,7 +203,9 @@
                 Swal.fire({
                     icon: 'error',
                     title: 'خطأ في تحميل الملاحظات',
-                    text: 'حدث خطأ أثناء تحميل الملاحظات: ' + error.message
+                    text: 'حدث خطأ أثناء تحميل الملاحظات: ' + error.message,
+                    background: 'var(--card-bg-light)',
+                    color: 'var(--text-color-light)'
                 });
                 updateDbStatus('خطأ في الاتصال', false); // Update status on error
             });
@@ -342,7 +380,9 @@
                 Swal.fire({
                     icon: 'error',
                     title: 'خطأ',
-                    text: 'حدث خطأ أثناء إضافة المهمة: ' + error.message
+                    text: 'حدث خطأ أثناء إضافة المهمة: ' + error.message,
+                    background: 'var(--card-bg-light)',
+                    color: 'var(--text-color-light)'
                 });
             }
         });
@@ -356,7 +396,7 @@
             const noteInput = document.getElementById('noteInput');
             const noteText = noteInput.value.trim();
             const noteDateInput = document.getElementById('noteDate');
-            const noteDate = noteDateInput.value; // Guadeloupe-MM-DD format
+            const noteDate = noteDateInput.value; // ISO-MM-DD format
 
             if (!noteText || !isAuthReady) return; // Ensure auth is ready before adding
 
@@ -374,7 +414,9 @@
                 Swal.fire({
                     icon: 'error',
                     title: 'خطأ',
-                    text: 'حدث خطأ أثناء إضافة الملاحظة: ' + error.message
+                    text: 'حدث خطأ أثناء إضافة الملاحظة: ' + error.message,
+                    background: 'var(--card-bg-light)',
+                    color: 'var(--text-color-light)'
                 });
             }
         });
@@ -418,7 +460,9 @@
                 Swal.fire({
                     icon: 'error',
                     title: 'خطأ',
-                    text: 'حدث خطأ أثناء تعديل المهمة: ' + error.message
+                    text: 'حدث خطأ أثناء تعديل المهمة: ' + error.message,
+                    background: 'var(--card-bg-light)',
+                    color: 'var(--text-color-light)'
                 });
             }
         });
@@ -435,7 +479,9 @@
                 showCancelButton: true,
                 confirmButtonText: 'نعم، احذف!',
                 cancelButtonText: 'إلغاء',
-                confirmButtonColor: '#d33'
+                confirmButtonColor: '#d33',
+                background: 'var(--card-bg-light)',
+                color: 'var(--text-color-light)'
             }).then(async (result) => { // Use async here for await inside
                 if (result.isConfirmed && isAuthReady) {
                     const taskDocRef = doc(db, `artifacts/${appId}/users/${userId}/tasks`, taskId);
@@ -445,7 +491,9 @@
                         Swal.fire({
                             icon: 'error',
                             title: 'خطأ',
-                            text: 'حدث خطأ أثناء حذف المهمة: ' + error.message
+                            text: 'حدث خطأ أثناء حذف المهمة: ' + error.message,
+                            background: 'var(--card-bg-light)',
+                            color: 'var(--text-color-light)'
                         });
                     }
                 }
@@ -464,7 +512,9 @@
                 showCancelButton: true,
                 confirmButtonText: 'نعم، احذف!',
                 cancelButtonText: 'إلغاء',
-                confirmButtonColor: '#d33'
+                confirmButtonColor: '#d33',
+                background: 'var(--card-bg-light)',
+                color: 'var(--text-color-light)'
             }).then(async (result) => { // Use async here for await inside
                 if (result.isConfirmed && isAuthReady) {
                     const noteDocRef = doc(db, `artifacts/${appId}/users/${userId}/notes`, noteId);
@@ -474,7 +524,9 @@
                         Swal.fire({
                             icon: 'error',
                             title: 'خطأ',
-                            text: 'حدث خطأ أثناء حذف الملاحظة: ' + error.message
+                            text: 'حدث خطأ أثناء حذف الملاحظة: ' + error.message,
+                            background: 'var(--card-bg-light)',
+                            color: 'var(--text-color-light)'
                         });
                     }
                 }
@@ -613,7 +665,9 @@
                 title: 'جاري اقتراح مهام فرعية ✨',
                 html: '<i class="fas fa-spinner fa-spin text-4xl text-purple-500"></i><p class="mt-4 text-lg">الرجاء الانتظار قليلاً...</p>',
                 allowOutsideClick: false,
-                showConfirmButton: false
+                showConfirmButton: false,
+                background: 'var(--card-bg-light)',
+                color: 'var(--text-color-light)'
             });
 
             const prompt = `اقترح 3-5 مهام فرعية موجزة (في شكل قائمة مرقمة أو نقاط) لهذه المهمة: "${taskText}". اجعل المهام عملية ومباشرة.`;
@@ -623,7 +677,9 @@
                 title: 'مهام فرعية مقترحة ✨',
                 html: `<div class="text-right">${result.replace(/\n/g, '<br>')}</div>`, // Handle newlines
                 icon: 'info',
-                confirmButtonText: 'حسنًا'
+                confirmButtonText: 'حسنًا',
+                background: 'var(--card-bg-light)',
+                color: 'var(--text-color-light)'
             });
         };
 
@@ -634,9 +690,11 @@
         window.summarizeNote = async function(noteText) {
             Swal.fire({
                 title: 'جاري تلخيص الملاحظة ✨',
-                html: '<i class="fas fa-spinner fa-spin text-4xl text-indigo-500"></i><p class="mt-4 text-lg">الرجاء الانتظار قليلاً...</p>',
+                html: '<i class="fas fa-spinner fa-spin text-4xl text-indigo-500"></i><p class="mt-4 text-lg">الرجاء الانتظلاظ قليلاً...</p>',
                 allowOutsideClick: false,
-                showConfirmButton: false
+                showConfirmButton: false,
+                background: 'var(--card-bg-light)',
+                color: 'var(--text-color-light)'
             });
 
             const prompt = `لخص الملاحظة التالية في 2-3 جمل موجزة: "${noteText}".`;
@@ -646,7 +704,9 @@
                 title: 'ملخص الملاحظة ✨',
                 html: `<div class="text-right">${result.replace(/\n/g, '<br>')}</div>`, // Handle newlines
                 icon: 'info',
-                confirmButtonText: 'حسنًا'
+                confirmButtonText: 'حسنًا',
+                background: 'var(--card-bg-light)',
+                color: 'var(--text-color-light)'
             });
         };
 
@@ -678,7 +738,9 @@
                     Swal.fire({
                         icon: 'warning',
                         title: 'حقول فارغة',
-                        text: 'الرجاء إدخال البريد الإلكتروني وكلمة المرور.'
+                        text: 'الرجاء إدخال البريد الإلكتروني وكلمة المرور.',
+                        background: 'var(--card-bg-light)', // Ensure Swal theme matches
+                        color: 'var(--text-color-light)'
                     });
                 }
             });
@@ -939,28 +1001,172 @@
         .dark-mode::-webkit-scrollbar-thumb:hover {
             background: #555;
         }
+
+        /* Login Page Specific Styles */
+        .auth-background {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-color) 20%, #ff6b6b 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .auth-background::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0 20v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM6 34v-4h-2v4H0v2h2v4h2v-4h4v-2H6zm0 20v-4h-2v4H0v2h2v4h2v-4h4v-2H6zM36 0v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM6 0v-4h-2v4H0v2h2v4h2v-4h4v-2H6zM21 21v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm30 0v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM21 42v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM51 42v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM21 0v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM51 0v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            background-size: 60px 60px;
+            opacity: 0.1;
+            z-index: 0;
+        }
+        .dark-mode .auth-background {
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+        }
+        .dark-mode .auth-background::before {
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%236b7280' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0 20v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM6 34v-4h-2v4H0v2h2v4h2v-4h4v-2H6zm0 20v-4h-2v4H0v2h2v4h2v-4h4v-2H6zM36 0v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM6 0v-4h-2v4H0v2h2v4h2v-4h4v-2H6zM21 21v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm30 0v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM21 42v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM51 42v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM21 0v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM51 0v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+
+        .login-card {
+            background-color: var(--card-bg-light);
+            border-radius: 1.5rem; /* More rounded */
+            padding: 2.5rem; /* More padding */
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2); /* Stronger shadow */
+            position: relative;
+            z-index: 1;
+            width: 90%; /* Wider on small screens */
+            max-width: 480px; /* Slightly wider max-width */
+            border: 1px solid var(--border-color-light);
+            transition: all 0.3s ease-in-out;
+        }
+
+        .dark-mode .login-card {
+            border: 1px solid var(--border-color-dark);
+        }
+
+        .login-card h2 {
+            font-size: 2.5rem; /* Larger title */
+            margin-bottom: 1.5rem;
+            color: var(--primary-color); /* Title in primary color */
+            font-weight: 700;
+        }
+
+        .login-card label {
+            text-align: right;
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-color-light);
+        }
+        .dark-mode .login-card label {
+            color: var(--text-color-dark);
+        }
+
+        .login-card input[type="email"],
+        .login-card input[type="password"] {
+            width: 100%;
+            padding: 1rem;
+            border-radius: 0.75rem; /* Rounded inputs */
+            border: 1px solid var(--border-color-light);
+            background-color: var(--bg-light);
+            color: var(--text-color-light);
+            transition: all 0.2s ease-in-out;
+        }
+
+        .dark-mode .login-card input[type="email"],
+        .dark-mode .login-card input[type="password"] {
+            background-color: #374151;
+            border-color: #4a5568;
+            color: var(--text-color-dark);
+        }
+
+        .login-card input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb-val), 0.3); /* Custom focus ring */
+        }
+
+        .login-card button {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 700;
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem; /* Rounded buttons */
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.125rem;
+        }
+
+        .login-card button:hover {
+            background-color: #c7040f; /* Darker red on hover */
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(var(--primary-color-rgb-val), 0.4);
+        }
+
+        .login-card .logo-container {
+            margin-bottom: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .login-card .logo-container img {
+            width: 100px; /* Larger logo */
+            height: 100px;
+            border-radius: 50%;
+            border: 5px solid var(--primary-color);
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+        .dark-mode .login-card .logo-container img {
+             border: 5px solid var(--primary-color);
+        }
+
+        .login-card .info-text {
+            margin-top: 1.5rem;
+            font-size: 0.9rem;
+            color: var(--text-color-light);
+            line-height: 1.5;
+        }
+        .dark-mode .login-card .info-text {
+            color: var(--text-color-dark);
+        }
+
+        /* Define RGB value for primary color to use in rgba() */
+        body {
+          --primary-color-rgb-val: 227, 6, 19; /* RGB for #e30613 */
+        }
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
     <!-- Login Section -->
-    <div id="authSection" class="flex flex-col items-center justify-center min-h-screen w-full bg-gray-100 dark:bg-gray-800 transition-colors duration-300">
-        <div class="bg-white dark:bg-gray-700 p-8 rounded-lg shadow-xl w-11/12 max-w-md border border-gray-200 dark:border-gray-600 text-center">
-            <img src="https://placehold.co/80x80/e30613/ffffff?text=SYM" alt="SYM Logo" class="w-20 h-20 rounded-full mx-auto mb-6 border-4 border-primary">
-            <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-6">مرحباً بك في SYM Algeria</h2>
+    <div id="authSection" class="auth-background">
+        <div class="login-card">
+            <div class="logo-container">
+                <img src="https://placehold.co/100x100/e30613/ffffff?text=SYM" alt="SYM Logo">
+                <h2 class="text-3xl font-bold mt-4">مرحباً بك في SYM Algeria</h2>
+            </div>
             <form id="loginForm" class="space-y-6">
                 <div>
-                    <label for="loginEmail" class="block text-gray-700 dark:text-gray-200 text-sm font-bold mb-2 text-right">البريد الإلكتروني:</label>
-                    <input type="email" id="loginEmail" placeholder="البريد الإلكتروني" class="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 dark:text-gray-200 leading-tight focus:outline-none focus:shadow-outline focus:ring-2 focus:ring-primary dark:bg-gray-600 dark:border-gray-500" value="kernani@symalgerie.dz" required>
+                    <label for="loginEmail">البريد الإلكتروني:</label>
+                    <input type="email" id="loginEmail" placeholder="أدخل بريدك الإلكتروني" value="kernani@symalgerie.dz" required>
                 </div>
                 <div>
-                    <label for="loginPassword" class="block text-gray-700 dark:text-gray-200 text-sm font-bold mb-2 text-right">كلمة المرور:</label>
-                    <input type="password" id="loginPassword" placeholder="كلمة المرور" class="shadow appearance-none border rounded-lg w-full py-3 px-4 text-gray-700 dark:text-gray-200 leading-tight focus:outline-none focus:shadow-outline focus:ring-2 focus:ring-primary dark:bg-gray-600 dark:border-gray-500" value="halim123" required>
+                    <label for="loginPassword">كلمة المرور:</label>
+                    <input type="password" id="loginPassword" placeholder="أدخل كلمة المرور" value="halim123" required>
                 </div>
-                <button type="submit" class="bg-primary hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 w-full flex items-center justify-center">
+                <button type="submit">
                     <i class="fas fa-sign-in-alt ml-2"></i> تسجيل الدخول
                 </button>
             </form>
-            <p class="mt-6 text-gray-600 dark:text-gray-300 text-sm">
+            <p class="info-text">
                 <i class="fas fa-info-circle ml-1"></i> ملاحظة: يجب إنشاء هذا الحساب في Firebase Authentication ليتمكن من تسجيل الدخول.
             </p>
         </div>
