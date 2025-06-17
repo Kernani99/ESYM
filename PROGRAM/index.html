@@ -11,25 +11,44 @@
 
     <!-- Firebase SDKs -->
     <script type="module">
-        // Import Realtime Database functions
+        // Import Realtime Database and Auth functions
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getDatabase, ref, push, remove, onValue, set } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js"; // Changed for Realtime Database
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getDatabase, ref, push, remove, onValue, set } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
 
         // Global variables for Firebase (MUST BE USED as per instructions)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // Hardcode firebaseConfig with the API key provided by the user
+        let firebaseConfig = {
+          "apiKey": "AIzaSyCcYnJ3HN_FL_ZCFsk2t3pDFyEPhKwoFcQ", // Updated API Key from user's last message
+          "authDomain": "bard-frontend.firebaseapp.com", // Assuming this is correct from previous logs
+          "projectId": "bard-frontend", // Assuming this is correct from previous logs
+          "storageBucket": "bard-frontend.firebasestorage.app",
+          "messagingSenderId": "175205271074",
+          "appId": "1:175205271074:web:2b7bd4d34d33bf38e6ec7b" // This appId will be overridden by __app_id for RDB path
+        };
+        
+        console.log('Parsed Firebase config:', firebaseConfig); // Log the parsed config
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getDatabase(app, "https://commercial-3ef19-default-rtdb.firebaseio.com/"); // Initialize Realtime Database with specified URL
+        // Explicitly check for apiKey, as it's crucial for authentication
+        if (!firebaseConfig.apiKey) {
+            console.error("Firebase config is missing 'apiKey'. Authentication will likely fail. Please ensure your Firebase project configuration is correctly provided to the environment.");
+            Swal.fire({
+                icon: 'error',
+                title: 'خطأ في تهيئة Firebase',
+                text: 'مفتاح API مفقود في إعدادات Firebase. لن تعمل المصادقة بشكل صحيح. يرجى التحقق من إعدادات مشروع Firebase الخاص بك.'
+            });
+        }
+
+        let app; // Declared globally
+        let auth; // Declared globally
+        let db;   // Declared globally
 
         // Global variables for data storage and user management
         let customerAppointments = [];
         let userId = null;
-        let isAuthReady = false;
+        let isAuthReady = false; 
         let currentWeekStartDate; // This will now be loaded from localStorage or set
 
         // Reference to Realtime Database path for customer appointments
@@ -117,13 +136,52 @@
             }
         }
 
+        /**
+         * Sets up Firebase app, auth, and database services.
+         * This function should be called once the DOM is ready.
+         */
+        async function setupFirebaseServices() {
+            try {
+                app = initializeApp(firebaseConfig);
+                console.log('Firebase app initialized successfully.');
+                
+                auth = getAuth(app);
+                db = getDatabase(app, "https://commercial-3ef19-default-rtdb.firebaseio.com/");
+                console.log('Firebase Auth and Database services initialized.');
+
+                // Now that Firebase services are initialized, proceed with authentication
+                await initializeAuthAndFirestore(); 
+
+            } catch (e) {
+                console.error("Error initializing Firebase app or services:", e);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'خطأ في تهيئة Firebase',
+                    text: 'فشل تهيئة تطبيق أو خدمات Firebase: ' + e.message + '. يرجى التحقق من إعدادات Firebase الخاصة بك.'
+                });
+                isAuthReady = false; // Ensure auth is marked as not ready
+                updateConnectionStatus('خطأ في الإعدادات', 'text-red-500', 'bg-red-500');
+            }
+        }
 
         /**
          * Initializes Firebase authentication and sets up the auth state listener.
          * Once authenticated, it sets the userId and initializes Realtime Database references.
          */
-        async function initializeAuthAndFirestore() { // Renamed from initializeAuthAndFirestore to reflect database change
+        async function initializeAuthAndFirestore() { 
             updateConnectionStatus('جاري الاتصال...', 'text-yellow-500', 'bg-yellow-500');
+
+            // Ensure auth object is available before proceeding
+            if (!auth) {
+                console.error("Firebase Auth service not initialized, cannot proceed with authentication.");
+                Swal.fire({
+                    icon: 'error',
+                    title: 'خطأ',
+                    text: 'خدمة Firebase Auth غير مهيأة. يرجى التحقق من أخطاء التهيئة السابقة.'
+                });
+                updateConnectionStatus('خطأ في الإعدادات', 'text-red-500', 'bg-red-500');
+                return;
+            }
 
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
@@ -135,7 +193,10 @@
                     updateConnectionStatus('متصل', 'text-green-500', 'bg-green-500');
                     console.log('Firebase initialized. userId:', userId, 'appointmentsRef path:', appointmentsRef.toString());
 
-                    // Load currentWeekStartDate from localStorage or default to current week
+                    // Hide login, show main app
+                    document.getElementById('loginContainer').style.display = 'none';
+                    document.getElementById('mainAppContent').style.display = 'flex'; // Changed to flex for proper layout
+
                     const storedWeek = localStorage.getItem('currentWeekStartDate');
                     if (storedWeek) {
                         currentWeekStartDate = getSundayOfCurrentWeek(new Date(storedWeek));
@@ -143,27 +204,105 @@
                         currentWeekStartDate = getSundayOfCurrentWeek(new Date());
                     }
 
-                    updateWeekDisplay(); // Update display immediately
-                    loadAppointments(); // Load appointments after authentication is ready
+                    updateWeekDisplay();
+                    loadAppointments();
                 } else {
-                    try {
-                        if (initialAuthToken) {
+                    // User is not signed in
+                    isAuthReady = false;
+                    userId = null; // Clear userId if logged out
+                    document.getElementById('userIdDisplay').textContent = 'ID: ---';
+                    updateConnectionStatus('غير متصل', 'text-red-500', 'bg-red-500');
+
+                    // Show login, hide main app
+                    document.getElementById('loginContainer').style.display = 'flex'; // Changed to flex
+                    document.getElementById('mainAppContent').style.display = 'none';
+
+                    // Try custom token if available, otherwise stay on login screen
+                    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                    if (initialAuthToken) {
+                        try {
                             await signInWithCustomToken(auth, initialAuthToken);
-                        } else {
-                            await signInAnonymously(auth);
+                        } catch (error) {
+                            console.error("Error signing in with custom token, defaulting to login form:", error);
+                            // If custom token fails, stay on login form which is already visible
                         }
-                    } catch (error) {
-                        console.error("Error signing in:", error);
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'خطأ في المصادقة',
-                            text: 'فشل تسجيل الدخول: ' + error.message
-                        });
-                        updateConnectionStatus('غير متصل', 'text-red-500', 'bg-red-500');
+                    } else {
+                        // No user and no custom token, simply remain on login screen
                     }
                 }
             });
         }
+
+        /**
+         * Handles user login with email and password.
+         */
+        window.loginUser = async function() {
+            const emailInput = document.getElementById('loginEmail');
+            const passwordInput = document.getElementById('loginPassword');
+            const email = emailInput.value.trim();
+            const password = passwordInput.value.trim();
+
+            if (!email || !password) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'بيانات غير مكتملة',
+                    text: 'الرجاء إدخال البريد الإلكتروني وكلمة المرور.'
+                });
+                return;
+            }
+
+            Swal.fire({
+                title: 'جاري تسجيل الدخول...',
+                html: '<i class="fas fa-spinner fa-spin text-4xl text-blue-500"></i><p class="mt-4 text-lg">الرجاء الانتظار قليلاً...</p>',
+                allowOutsideClick: false,
+                showConfirmButton: false
+            });
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                Swal.close(); // Close loading modal
+                Swal.fire({
+                    icon: 'success',
+                    title: 'تم تسجيل الدخول بنجاح!',
+                    showConfirmButton: false,
+                    timer: 1500
+                });
+                // onAuthStateChanged will handle displaying main content and loading data
+            } catch (error) {
+                console.error("Error signing in with email/password:", error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'فشل تسجيل الدخول',
+                    text: 'البريد الإلكتروني أو كلمة المرور غير صحيحة. يرجى المحاولة مرة أخرى. (الخطأ: ' + error.message + ')'
+                });
+            }
+        };
+
+        /**
+         * Handles user logout.
+         */
+        window.logoutUser = async function() {
+            try {
+                await signOut(auth);
+                Swal.fire({
+                    icon: 'success',
+                    title: 'تم تسجيل الخروج',
+                    text: 'لقد تم تسجيل خروجك بنجاح.'
+                });
+                // UI will be handled by onAuthStateChanged listener
+                // Clear inputs for security
+                document.getElementById('loginEmail').value = '';
+                document.getElementById('loginPassword').value = '';
+            } catch (error) {
+                console.error("Error logging out:", error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'خطأ في تسجيل الخروج',
+                    text: 'حدث خطأ أثناء تسجيل الخروج: ' + error.message
+                });
+            }
+        };
+
 
         /**
          * Loads customer appointments from Realtime Database in real-time.
@@ -171,6 +310,10 @@
         function loadAppointments() {
             if (!isAuthReady) {
                 console.log("Authentication not ready, delaying data load.");
+                return;
+            }
+            if (!appointmentsRef) {
+                console.error("appointmentsRef is not defined. Cannot load appointments. Firebase services might not be fully initialized.");
                 return;
             }
 
@@ -311,6 +454,15 @@
                 });
                 return;
             }
+            if (!appointmentsRef) {
+                console.error("appointmentsRef is not defined. Cannot add appointment. Firebase services might not be fully initialized.");
+                Swal.fire({
+                    icon: 'error',
+                    title: 'خطأ في قاعدة البيانات',
+                    text: 'مرجع قاعدة البيانات غير مهيأ. يرجى التحقق من أخطاء التهيئة.'
+                });
+                return;
+            }
 
             // Create a Date object for the current day of the week being added to,
             // and associate it with the current filtered week's dates.
@@ -327,7 +479,7 @@
             };
 
             console.log('Attempting to add appointment:', newAppointment);
-            console.log('Current appointmentsRef:', appointmentsRef ? appointmentsRef.toString() : 'undefined');
+            console.log('Current appointmentsRef:', appointmentsRef.toString());
 
             try {
                 // Use push for Realtime Database to generate a unique key
@@ -360,6 +512,15 @@
                 confirmButtonColor: '#d33'
             }).then(async (result) => {
                 if (result.isConfirmed && isAuthReady) {
+                    if (!appointmentsRef) {
+                        console.error("appointmentsRef is not defined. Cannot delete appointment. Firebase services might not be fully initialized.");
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'خطأ في قاعدة البيانات',
+                            text: 'مرجع قاعدة البيانات غير مهيأ. يرجى التحقق من أخطاء التهيئة.'
+                        });
+                        return;
+                    }
                     const appointmentToDeleteRef = ref(db, `artifacts/${appId}/users/${userId}/customerAppointments/${appointmentId}`); // Correct path for deletion
                     try {
                         await remove(appointmentToDeleteRef); // Use remove for Realtime Database
@@ -498,7 +659,7 @@
                     moonIcon.classList.replace('fa-moon', 'fa-sun');
                 }
             }
-            initializeAuthAndFirestore(); // Call the updated initialization function
+            setupFirebaseServices(); // Call the new initialization function
         });
     </script>
     <style>
@@ -669,14 +830,14 @@
         }
 
         /* Forms and Buttons */
-        input[type="text"], input[type="time"], select {
+        input[type="text"], input[type="time"], input[type="email"], input[type="password"], select {
             border-radius: 8px;
             padding: 0.75rem 1rem;
             border: 1px solid var(--border-color-light);
             transition: border-color 0.3s ease, box-shadow 0.3s ease;
             width: 100%;
         }
-        input[type="text"]:focus, input[type="time"]:focus, select:focus {
+        input[type="text"]:focus, input[type="time"]:focus, input[type="email"]:focus, input[type="password"]:focus, select:focus {
             outline: none;
             border-color: var(--primary-color);
             box-shadow: 0 0 0 3px rgba(227, 6, 19, 0.2);
@@ -777,36 +938,57 @@
 </head>
 <body class="flex flex-col min-h-screen">
 
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="sidebar-item">
-            <i class="fas fa-home"></i>
-            <span class="sidebar-text">الرئيسية</span>
-        </div>
-        <div class="sidebar-item" onclick="goToCurrentWeek()" aria-label="الأسبوع الحالي">
-            <i class="fas fa-calendar-week"></i>
-            <span class="sidebar-text">الأسبوع الحالي</span>
-        </div>
-        <div class="sidebar-item" onclick="toggleDarkMode()" aria-label="وضع الليل/النهار">
-            <i class="fas fa-moon"></i> <!-- Initial icon, changes to fa-sun in JS -->
-            <span class="sidebar-text">وضع الليل/النهار</span>
-        </div>
-        <div class="sidebar-item">
-            <i class="fas fa-info-circle"></i>
-            <span class="sidebar-text">معلومات</span>
-        </div>
-        <!-- Connection Status Indicator -->
-        <div class="mt-auto p-2 text-center text-sm">
-            <div class="flex items-center justify-center">
-                <span id="connectionStatusDot" class="w-3 h-3 rounded-full ml-2"></span>
-                <span id="connectionStatusText" class="text-gray-600 dark:text-gray-400">جاري الاتصال...</span>
+    <!-- Login Container -->
+    <div id="loginContainer" class="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900" style="display: none;">
+        <div class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-sm border border-gray-200 dark:border-gray-700 text-center">
+            <img src="https://placehold.co/80x80/e30613/ffffff?text=SYM" alt="SYM Algeria Logo" class="mx-auto mb-6 rounded-lg">
+            <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6">تسجيل الدخول</h2>
+            <div class="mb-4">
+                <input type="email" id="loginEmail" placeholder="البريد الإلكتروني" class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500">
             </div>
-            <p id="userIdDisplay" class="text-xs text-gray-500 dark:text-gray-400 mt-1 break-all">ID: ---</p>
+            <div class="mb-6">
+                <input type="password" id="loginPassword" placeholder="كلمة المرور" class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-300 dark:border-gray-600 focus:ring-primary-500 focus:border-primary-500">
+            </div>
+            <button onclick="loginUser()" class="w-full bg-primary-color hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg" style="background-color: var(--primary-color);">
+                تسجيل الدخول
+            </button>
         </div>
     </div>
 
-    <!-- Main Content -->
-    <div class="main-content flex-grow flex flex-col">
+    <!-- Main App Content -->
+    <div id="mainAppContent" class="flex flex-col min-h-screen" style="display: none;">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-item">
+                <i class="fas fa-home"></i>
+                <span class="sidebar-text">الرئيسية</span>
+            </div>
+            <div class="sidebar-item" onclick="goToCurrentWeek()" aria-label="الأسبوع الحالي">
+                <i class="fas fa-calendar-week"></i>
+                <span class="sidebar-text">الأسبوع الحالي</span>
+            </div>
+            <div class="sidebar-item" onclick="toggleDarkMode()" aria-label="وضع الليل/النهار">
+                <i class="fas fa-moon"></i> <!-- Initial icon, changes to fa-sun in JS -->
+                <span class="sidebar-text">وضع الليل/النهار</span>
+            </div>
+            <div class="sidebar-item">
+                <i class="fas fa-info-circle"></i>
+                <span class="sidebar-text">معلومات</span>
+            </div>
+            <div class="sidebar-item" onclick="logoutUser()" aria-label="تسجيل الخروج">
+                <i class="fas fa-sign-out-alt"></i>
+                <span class="sidebar-text">تسجيل الخروج</span>
+            </div>
+            <!-- Connection Status Indicator -->
+            <div class="mt-auto p-2 text-center text-sm">
+                <div class="flex items-center justify-center">
+                    <span id="connectionStatusDot" class="w-3 h-3 rounded-full ml-2"></span>
+                    <span id="connectionStatusText" class="text-gray-600 dark:text-gray-400">جاري الاتصال...</span>
+                </div>
+                <p id="userIdDisplay" class="text-xs text-gray-500 dark:text-gray-400 mt-1 break-all">ID: ---</p>
+            </div>
+        </div>
+
         <!-- Navbar -->
         <nav class="navbar flex items-center justify-between p-4 shadow-md rounded-b-lg">
             <div class="flex items-center">
