@@ -12,157 +12,145 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"; // Only keep necessary auth imports
+        import { getAuth, signInWithEmailAndPassword, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Global variables for Firebase (MUST BE USED as per instructions)
+        // Global variables for Firebase
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app); // Get auth instance
+        const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Global variables for data storage and user management
+        // Global variables
         let tasks = [];
         let notes = [];
-        let userId = null; // Will be set after authentication or anonymously
-        let isAuthReady = false; // Flag to ensure Firestore operations run after auth
-        let currentFilterDate = new Date(); // Stores the currently selected date for filtering
+        let userId = null;
+        let isAuthReady = false;
+        let currentFilterDate = new Date();
 
-        // References to Firestore collections
+        // Firestore references
         let tasksCollectionRef;
         let notesCollectionRef;
 
-        /**
-         * Initializes Firebase authentication (or anonymous sign-in) and sets up the auth state listener.
-         * Once authenticated, it sets the userId and initializes Firestore references.
-         * Handles showing/hiding the login page based on authentication status.
-         */
-        async function initializeAuthAndUI() {
-            // Attempt to sign in with custom token if available (Canvas environment)
+        /* Login Functions */
+        async function handleLogin(email, password) {
             try {
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    // Sign in anonymously if no initial token is provided
-                    await signInAnonymously(auth);
-                }
-                // Once authenticated/anonymously signed in, set userId and proceed
-                userId = auth.currentUser?.uid || crypto.randomUUID(); // Use UID if authenticated, else random UUID
-                tasksCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/tasks`);
-                notesCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/notes`);
-                isAuthReady = true; // Auth is ready, can load data
-                document.getElementById('userIdDisplay').textContent = `ID: ${userId}`;
-                
-                // Show app section and load data
-                document.getElementById('appSection').classList.remove('hidden');
-                loadData();
-                updateDbStatus('متصل', true); // Database connected
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                userId = userCredential.user.uid;
+                initializeAfterLogin();
             } catch (error) {
-                console.error("Error with initial authentication/anonymous sign-in:", error);
+                let errorMessage = "حدث خطأ أثناء تسجيل الدخول";
+                switch(error.code) {
+                    case "auth/invalid-email": errorMessage = "بريد إلكتروني غير صحيح"; break;
+                    case "auth/user-disabled": errorMessage = "هذا الحساب معطل"; break;
+                    case "auth/user-not-found": errorMessage = "لم يتم العثور على حساب"; break;
+                    case "auth/wrong-password": errorMessage = "كلمة المرور غير صحيحة"; break;
+                    default: errorMessage = error.message;
+                }
+                
                 Swal.fire({
                     icon: 'error',
-                    title: 'خطأ في الاتصال بالخدمات',
-                    text: 'فشل تهيئة التطبيق: ' + error.message + '. الرجاء إعادة تحميل الصفحة أو الاتصال بالدعم.',
-                    background: 'var(--card-bg-light)', // Ensure Swal theme matches
+                    title: 'خطأ في تسجيل الدخول',
+                    text: errorMessage,
+                    background: 'var(--card-bg-light)',
                     color: 'var(--text-color-light)'
                 });
-                updateDbStatus('غير متصل', false); // Database disconnected
             }
         }
 
-        /**
-         * Updates the database connection status display.
-         * @param {string} statusText - The text to display (e.g., 'متصل', 'غير متصل').
-         * @param {boolean} isConnected - True if connected, false otherwise.
-         */
+        function initializeAfterLogin() {
+            tasksCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/tasks`);
+            notesCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/notes`);
+            isAuthReady = true;
+            
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('appSection').classList.remove('hidden');
+            document.getElementById('userIdDisplay').textContent = `ID: ${userId}`;
+            
+            loadData();
+            updateDbStatus('متصل', true);
+        }
+
+        async function initializeAuthAndUI() {
+            // Development bypass
+            const bypassLogin = localStorage.getItem('bypassLogin') === 'true';
+            if (bypassLogin) {
+                try {
+                    await handleLogin('kernani@symalgerie.dz', 'halim123');
+                    return;
+                } catch (error) {
+                    console.log("Bypass login failed");
+                }
+            }
+
+            document.getElementById('loginSection').classList.remove('hidden');
+            
+            document.getElementById('loginForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const email = document.getElementById('loginEmail').value;
+                const password = document.getElementById('loginPassword').value;
+                await handleLogin(email, password);
+            });
+        }
+
+        /* Core Application Functions */
         function updateDbStatus(statusText, isConnected) {
             const statusElement = document.getElementById('dbStatus');
             statusElement.textContent = statusText;
-            statusElement.className = ''; // Clear existing classes
-            if (isConnected) {
-                statusElement.classList.add('text-green-500', 'font-bold');
-            } else {
-                statusElement.classList.add('text-red-500', 'font-bold');
-            }
+            statusElement.className = '';
+            statusElement.classList.add(isConnected ? 'text-green-500' : 'text-red-500', 'font-bold');
         }
 
-        /**
-         * Loads tasks and notes data from Firestore in real-time using onSnapshot listeners.
-         * Data loading only occurs if authentication is ready.
-         */
         function loadData() {
-            if (!isAuthReady) {
-                console.log("Authentication not ready, delaying data load.");
-                return;
-            }
+            if (!isAuthReady) return;
 
-            // Display loading indicators
-            document.getElementById('tasksList').innerHTML = `<div class="text-center p-4 text-gray-500 flex items-center justify-center">
-                <i class="fas fa-spinner fa-spin ml-2"></i> جاري تحميل المهام...
-            </div>`;
-            document.getElementById('notesList').innerHTML = `<div class="text-center p-4 text-gray-500 flex items-center justify-center">
-                <i class="fas fa-spinner fa-spin ml-2"></i> جاري تحميل الملاحظات...
-            </div>`;
+            // Loading indicators
+            document.getElementById('tasksList').innerHTML = `
+                <div class="text-center p-4 text-gray-500 flex items-center justify-center">
+                    <i class="fas fa-spinner fa-spin ml-2"></i> جاري تحميل المهام...
+                </div>`;
+            document.getElementById('notesList').innerHTML = `
+                <div class="text-center p-4 text-gray-500 flex items-center justify-center">
+                    <i class="fas fa-spinner fa-spin ml-2"></i> جاري تحميل الملاحظات...
+                </div>`;
 
-            // Listen for real-time changes to tasks
+            // Tasks listener
             onSnapshot(query(tasksCollectionRef), (snapshot) => {
                 tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                filterAndRenderTasks(); // Filter and render based on currentFilterDate
+                filterAndRenderTasks();
                 updateProgress();
-                updateDbStatus('متصل', true); // Update status on successful data load
+                updateDbStatus('متصل', true);
             }, (error) => {
                 console.error("Error fetching tasks:", error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'خطأ في تحميل المهام',
-                    text: 'حدث خطأ أثناء تحميل المهام: ' + error.message,
-                    background: 'var(--card-bg-light)',
-                    color: 'var(--text-color-light)'
-                });
-                updateDbStatus('خطأ في الاتصال', false); // Update status on error
+                updateDbStatus('خطأ في الاتصال', false);
             });
 
-            // Listen for real-time changes to notes
+            // Notes listener
             onSnapshot(query(notesCollectionRef), (snapshot) => {
                 notes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                filterAndRenderNotes(); // Filter and render based on currentFilterDate
-                updateDbStatus('متصل', true); // Update status on successful data load
+                filterAndRenderNotes();
+                updateDbStatus('متصل', true);
             }, (error) => {
                 console.error("Error fetching notes:", error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'خطأ في تحميل الملاحظات',
-                    text: 'حدث خطأ أثناء تحميل الملاحظات: ' + error.message,
-                    background: 'var(--card-bg-light)',
-                    color: 'var(--text-color-light)'
-                });
-                updateDbStatus('خطأ في الاتصال', false); // Update status on error
+                updateDbStatus('خطأ في الاتصال', false);
             });
         }
 
-        /**
-         * Filters tasks based on the currentFilterDate and then renders them.
-         */
         function filterAndRenderTasks() {
             const filteredTasks = tasks.filter(task => {
-                // Assuming task.createdAt is an ISO string like "2023-10-27T10:00:00.000Z"
                 const taskDate = new Date(task.createdAt);
                 return taskDate.toDateString() === currentFilterDate.toDateString();
             });
             renderTasks(filteredTasks);
-            updateProgress(filteredTasks); // Update progress based on filtered tasks
+            updateProgress(filteredTasks);
         }
 
-        /**
-         * Filters notes based on the currentFilterDate and then renders them.
-         */
         function filterAndRenderNotes() {
             const filteredNotes = notes.filter(note => {
-                // For notes, we check the 'date' field if available, or createdAt
                 const noteDateString = note.date || new Date(note.createdAt).toISOString().split('T')[0];
                 const noteDate = new Date(noteDateString);
                 return noteDate.toDateString() === currentFilterDate.toDateString();
@@ -170,20 +158,15 @@
             renderNotes(filteredNotes);
         }
 
-        /**
-         * Renders the list of tasks to the UI.
-         * @param {Array} tasksToRender - The array of tasks to display.
-         */
         function renderTasks(tasksToRender) {
             const tasksList = document.getElementById('tasksList');
-            tasksList.innerHTML = ''; // Clear existing tasks
+            tasksList.innerHTML = '';
 
             if (tasksToRender.length === 0) {
                 tasksList.innerHTML = `
                     <div class="text-center p-4 text-gray-500">
                         لا توجد مهام مسجلة لهذا اليوم.
-                    </div>
-                `;
+                    </div>`;
                 return;
             }
 
@@ -215,44 +198,36 @@
                         </div>
                         <div class="flex items-center space-x-2 mr-2">
                             <span class="px-3 py-1 rounded-full text-xs font-semibold ${statusClass}">${statusText}</span>
-                            <button onclick="editTask('${task.id}')" class="text-blue-600 hover:text-blue-800 transition-colors duration-200 p-1 rounded-full hover:bg-blue-100" aria-label="تعديل المهمة">
+                            <button onclick="editTask('${task.id}')" class="text-blue-600 hover:text-blue-800 transition-colors duration-200 p-1 rounded-full hover:bg-blue-100">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button onclick="suggestSubtasks('${task.text}')" class="text-purple-600 hover:text-purple-800 transition-colors duration-200 p-1 rounded-full hover:bg-purple-100" aria-label="اقترح مهام فرعية">
+                            <button onclick="suggestSubtasks('${task.text}')" class="text-purple-600 hover:text-purple-800 transition-colors duration-200 p-1 rounded-full hover:bg-purple-100">
                                 <i class="fas fa-sparkles"></i>
                             </button>
-                            <button onclick="deleteTask('${task.id}')" class="text-red-600 hover:text-red-800 transition-colors duration-200 p-1 rounded-full hover:bg-red-100" aria-label="حذف المهمة">
+                            <button onclick="deleteTask('${task.id}')" class="text-red-600 hover:text-red-800 transition-colors duration-200 p-1 rounded-full hover:bg-red-100">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
-                    </div>
-                `;
-
+                    </div>`;
                 tasksList.appendChild(taskElement);
             });
         }
 
-        /**
-         * Renders the list of notes to the UI.
-         * @param {Array} notesToRender - The array of notes to display.
-         */
         function renderNotes(notesToRender) {
             const notesList = document.getElementById('notesList');
-            notesList.innerHTML = ''; // Clear existing notes
+            notesList.innerHTML = '';
 
             if (notesToRender.length === 0) {
                 notesList.innerHTML = `
                     <div class="text-center p-4 text-gray-500">
                         لا توجد ملاحظات مسجلة لهذا اليوم.
-                    </div>
-                `;
+                    </div>`;
                 return;
             }
 
             notesToRender.forEach(note => {
                 const noteElement = document.createElement('div');
                 noteElement.className = 'bg-white p-4 rounded-lg shadow-md border border-gray-200 fade-in';
-
                 noteElement.innerHTML = `
                     <div class="flex justify-between items-center">
                         <div class="flex-grow">
@@ -260,151 +235,100 @@
                             <small class="text-gray-500">التاريخ: ${note.date || 'لا يوجد'}</small>
                         </div>
                         <div class="flex items-center space-x-2 mr-2">
-                            <button onclick="summarizeNote('${note.text}')" class="text-indigo-600 hover:text-indigo-800 transition-colors duration-200 p-1 rounded-full hover:bg-indigo-100" aria-label="لخص الملاحظة">
+                            <button onclick="summarizeNote('${note.text}')" class="text-indigo-600 hover:text-indigo-800 transition-colors duration-200 p-1 rounded-full hover:bg-indigo-100">
                                 <i class="fas fa-lightbulb"></i> ✨
                             </button>
-                            <button onclick="deleteNote('${note.id}')" class="text-red-600 hover:text-red-800 transition-colors duration-200 p-1 rounded-full hover:bg-red-100" aria-label="حذف الملاحظة">
+                            <button onclick="deleteNote('${note.id}')" class="text-red-600 hover:text-red-800 transition-colors duration-200 p-1 rounded-full hover:bg-red-100">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
-                    </div>
-                `;
-
+                    </div>`;
                 notesList.appendChild(noteElement);
             });
         }
 
-        /**
-         * Updates the progress bar and percentage based on completed tasks.
-         * @param {Array} tasksToCount - The array of tasks to use for progress calculation.
-         */
-        function updateProgress(tasksToCount = tasks) { // Default to all tasks if not filtered
+        function updateProgress(tasksToCount = tasks) {
             const totalTasks = tasksToCount.length;
             const completedTasks = tasksToCount.filter(task => task.status === 'completed').length;
-
             const percentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
             document.getElementById('progressBar').style.width = percentage + '%';
             document.getElementById('progressPercentage').textContent = percentage + '%';
         }
 
-        /**
-         * Handles adding a new task to Firestore.
-         */
+        /* Event Listeners */
         document.getElementById('taskForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-
             const taskInput = document.getElementById('taskInput');
             const taskText = taskInput.value.trim();
             const taskStatus = document.getElementById('taskStatus').value;
 
-            if (!taskText || !isAuthReady) return; // Ensure auth is ready before adding
-
-            const newTask = {
-                text: taskText,
-                status: taskStatus,
-                createdAt: new Date().toISOString() // Store current timestamp for creation
-            };
+            if (!taskText || !isAuthReady) return;
 
             try {
-                await addDoc(tasksCollectionRef, newTask);
-                taskInput.value = ''; // Clear input field
-            } catch (error) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'خطأ',
-                    text: 'حدث خطأ أثناء إضافة المهمة: ' + error.message,
-                    background: 'var(--card-bg-light)',
-                    color: 'var(--text-color-light)'
+                await addDoc(tasksCollectionRef, {
+                    text: taskText,
+                    status: taskStatus,
+                    createdAt: new Date().toISOString()
                 });
+                taskInput.value = '';
+            } catch (error) {
+                console.error("Error adding task:", error);
             }
         });
 
-        /**
-         * Handles adding a new note to Firestore.
-         */
         document.getElementById('noteForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-
             const noteInput = document.getElementById('noteInput');
             const noteText = noteInput.value.trim();
-            const noteDateInput = document.getElementById('noteDate');
-            const noteDate = noteDateInput.value; // ISO-MM-DD format
+            const noteDate = document.getElementById('noteDate').value;
 
-            if (!noteText || !isAuthReady) return; // Ensure auth is ready before adding
-
-            const newNote = {
-                text: noteText,
-                date: noteDate || new Date().toISOString().split('T')[0], // Use selected date or today's date (YYYY-MM-DD)
-                createdAt: new Date().toISOString() // Store current timestamp for creation
-            };
+            if (!noteText || !isAuthReady) return;
 
             try {
-                await addDoc(notesCollectionRef, newNote);
-                noteInput.value = ''; // Clear input field
-                noteDateInput.value = ''; // Clear date input field
-            } catch (error) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'خطأ',
-                    text: 'حدث خطأ أثناء إضافة الملاحظة: ' + error.message,
-                    background: 'var(--card-bg-light)',
-                    color: 'var(--text-color-light)'
+                await addDoc(notesCollectionRef, {
+                    text: noteText,
+                    date: noteDate || new Date().toISOString().split('T')[0],
+                    createdAt: new Date().toISOString()
                 });
+                noteInput.value = '';
+                document.getElementById('noteDate').value = '';
+            } catch (error) {
+                console.error("Error adding note:", error);
             }
         });
 
-        /**
-         * Opens the edit task modal and populates it with existing task data.
-         * @param {string} taskId - The ID of the task to edit.
-         */
-        window.editTask = function(taskId) { // Made global for onclick in HTML
+        document.getElementById('editTaskForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const taskId = document.getElementById('editTaskId').value;
+            const taskText = document.getElementById('editTaskText').value.trim();
+            const taskStatus = document.getElementById('editTaskStatus').value;
+
+            if (!taskText || !isAuthReady) return;
+
+            try {
+                await updateDoc(doc(db, `artifacts/${appId}/users/${userId}/tasks`, taskId), {
+                    text: taskText,
+                    status: taskStatus
+                });
+                closeEditModal();
+            } catch (error) {
+                console.error("Error updating task:", error);
+            }
+        });
+
+        /* Global Window Functions */
+        window.editTask = function(taskId) {
             const task = tasks.find(t => t.id === taskId);
             if (!task) return;
 
             document.getElementById('editTaskId').value = taskId;
             document.getElementById('editTaskText').value = task.text;
             document.getElementById('editTaskStatus').value = task.status;
-
             document.getElementById('editTaskModal').classList.remove('hidden');
         };
 
-        /**
-         * Handles saving edits to an existing task in Firestore.
-         */
-        document.getElementById('editTaskForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
-
-            const taskId = document.getElementById('editTaskId').value;
-            const taskText = document.getElementById('editTaskText').value.trim();
-            const taskStatus = document.getElementById('editTaskStatus').value;
-
-            if (!taskText || !isAuthReady) return; // Ensure auth is ready
-
-            const taskDocRef = doc(db, `artifacts/${appId}/users/${userId}/tasks`, taskId);
-
-            try {
-                await updateDoc(taskDocRef, {
-                    text: taskText,
-                    status: taskStatus
-                });
-                closeEditModal();
-            } catch (error) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'خطأ',
-                    text: 'حدث خطأ أثناء تعديل المهمة: ' + error.message,
-                    background: 'var(--card-bg-light)',
-                    color: 'var(--text-color-light)'
-                });
-            }
-        });
-
-        /**
-         * Deletes a task from Firestore after user confirmation.
-         * @param {string} taskId - The ID of the task to delete.
-         */
-        window.deleteTask = function(taskId) { // Made global for onclick in HTML
+        window.deleteTask = function(taskId) {
             Swal.fire({
                 title: 'هل أنت متأكد؟',
                 text: 'سيتم حذف هذه المهمة نهائيًا!',
@@ -415,29 +339,18 @@
                 confirmButtonColor: '#d33',
                 background: 'var(--card-bg-light)',
                 color: 'var(--text-color-light)'
-            }).then(async (result) => { // Use async here for await inside
+            }).then(async (result) => {
                 if (result.isConfirmed && isAuthReady) {
-                    const taskDocRef = doc(db, `artifacts/${appId}/users/${userId}/tasks`, taskId);
                     try {
-                        await deleteDoc(taskDocRef);
+                        await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/tasks`, taskId));
                     } catch (error) {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'خطأ',
-                            text: 'حدث خطأ أثناء حذف المهمة: ' + error.message,
-                            background: 'var(--card-bg-light)',
-                            color: 'var(--text-color-light)'
-                        });
+                        console.error("Error deleting task:", error);
                     }
                 }
             });
         };
 
-        /**
-         * Deletes a note from Firestore after user confirmation.
-         * @param {string} noteId - The ID of the note to delete.
-         */
-        window.deleteNote = function(noteId) { // Made global for onclick in HTML
+        window.deleteNote = function(noteId) {
             Swal.fire({
                 title: 'هل أنت متأكد؟',
                 text: 'سيتم حذف هذه الملاحظة نهائيًا!',
@@ -448,62 +361,36 @@
                 confirmButtonColor: '#d33',
                 background: 'var(--card-bg-light)',
                 color: 'var(--text-color-light)'
-            }).then(async (result) => { // Use async here for await inside
+            }).then(async (result) => {
                 if (result.isConfirmed && isAuthReady) {
-                    const noteDocRef = doc(db, `artifacts/${appId}/users/${userId}/notes`, noteId);
                     try {
-                        await deleteDoc(noteDocRef);
+                        await deleteDoc(doc(db, `artifacts/${appId}/users/${userId}/notes`, noteId));
                     } catch (error) {
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'خطأ',
-                            text: 'حدث خطأ أثناء حذف الملاحظة: ' + error.message,
-                            background: 'var(--card-bg-light)',
-                            color: 'var(--text-color-light)'
-                        });
+                        console.error("Error deleting note:", error);
                     }
                 }
             });
         };
 
-        /**
-         * Closes the task edit modal.
-         */
-        window.closeEditModal = function() { // Made global for onclick in HTML
+        window.closeEditModal = function() {
             document.getElementById('editTaskModal').classList.add('hidden');
         };
 
-        /**
-         * Toggles between the "Tasks" and "Notes" sections.
-         * @param {string} sectionId - The ID of the section to show ('tasksSection' or 'notesSection').
-         */
-        window.toggleSection = function(sectionId) { // Made global for onclick in HTML
-            // Hide all main sections first
+        window.toggleSection = function(sectionId) {
             document.getElementById('tasksSection').classList.add('hidden');
             document.getElementById('notesSection').classList.add('hidden');
             document.getElementById('ellipseSection').classList.add('hidden');
             document.getElementById('distributionSection').classList.add('hidden');
-
-            // Show the requested section
             document.getElementById(sectionId).classList.remove('hidden');
 
-            // Re-filter and render data when switching to Tasks or Notes
-            if (sectionId === 'tasksSection') {
-                filterAndRenderTasks();
-            } else if (sectionId === 'notesSection') {
-                filterAndRenderNotes();
-            }
-            // For new sections, you might want to load specific content if they have dynamic data
+            if (sectionId === 'tasksSection') filterAndRenderTasks();
+            else if (sectionId === 'notesSection') filterAndRenderNotes();
         };
 
-        /**
-         * Toggles dark mode on/off and saves the preference to local storage.
-         * Also updates the moon/sun icon in the sidebar.
-         */
-        window.toggleDarkMode = function() { // Made global for onclick in HTML
+        window.toggleDarkMode = function() {
             document.body.classList.toggle('dark-mode');
             localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
-
+            
             const icon = document.querySelector('.sidebar-item i.fa-moon, .sidebar-item i.fa-sun');
             if (document.body.classList.contains('dark-mode')) {
                 icon.classList.replace('fa-moon', 'fa-sun');
@@ -512,9 +399,6 @@
             }
         };
 
-        /**
-         * Updates the current date and time displayed in the navbar.
-         */
         function updateCurrentDateDisplay() {
             const options = {
                 weekday: 'long',
@@ -522,50 +406,34 @@
                 month: 'long',
                 day: 'numeric'
             };
-            // Display the current filter date in Western numerals (en-US locale)
             document.getElementById('currentFilterDateDisplay').textContent = currentFilterDate.toLocaleDateString('en-US', options);
         }
 
-        /**
-         * Moves the currentFilterDate to the previous day and re-renders data.
-         */
-        window.goToPreviousDay = function() { // Made global for onclick in HTML
+        window.goToPreviousDay = function() {
             currentFilterDate.setDate(currentFilterDate.getDate() - 1);
             updateCurrentDateDisplay();
             filterAndRenderTasks();
             filterAndRenderNotes();
         };
 
-        /**
-         * Moves the currentFilterDate to the next day and re-renders data.
-         */
-        window.goToNextDay = function() { // Made global for onclick in HTML
+        window.goToNextDay = function() {
             currentFilterDate.setDate(currentFilterDate.getDate() + 1);
             updateCurrentDateDisplay();
             filterAndRenderTasks();
             filterAndRenderNotes();
         };
 
-        /**
-         * Resets the currentFilterDate to today and re-renders data.
-         */
-        window.goToToday = function() { // Made global for onclick in HTML
+        window.goToToday = function() {
             currentFilterDate = new Date();
             updateCurrentDateDisplay();
             filterAndRenderTasks();
             filterAndRenderNotes();
         };
 
-        /**
-         * Calls the Gemini API to generate text based on a given prompt.
-         * @param {string} prompt - The prompt to send to the LLM.
-         * @returns {Promise<string>} - A promise that resolves with the generated text.
-         */
         async function callGeminiAPI(prompt) {
-            let chatHistory = [];
-            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+            let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
             const payload = { contents: chatHistory };
-            const apiKey = ""; // Canvas will provide this
+            const apiKey = "";
             const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
             try {
@@ -575,24 +443,15 @@
                     body: JSON.stringify(payload)
                 });
                 const result = await response.json();
-                if (result.candidates && result.candidates.length > 0 &&
-                    result.candidates[0].content && result.candidates[0].content.parts &&
-                    result.candidates[0].content.parts.length > 0) {
+                if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
                     return result.candidates[0].content.parts[0].text;
-                } else {
-                    console.error("Gemini API response structure unexpected:", result);
-                    return "لم يتم العثور على استجابة من الذكاء الاصطناعي.";
                 }
+                return "لم يتم العثور على استجابة من الذكاء الاصطناعي.";
             } catch (error) {
-                console.error("Error calling Gemini API:", error);
                 return "حدث خطأ أثناء الاتصال بالذكاء الاصطناعي: " + error.message;
             }
         }
 
-        /**
-         * Suggests subtasks for a given task using the Gemini API.
-         * @param {string} taskText - The text of the main task.
-         */
         window.suggestSubtasks = async function(taskText) {
             Swal.fire({
                 title: 'جاري اقتراح مهام فرعية ✨',
@@ -608,7 +467,7 @@
 
             Swal.fire({
                 title: 'مهام فرعية مقترحة ✨',
-                html: `<div class="text-right">${result.replace(/\n/g, '<br>')}</div>`, // Handle newlines
+                html: `<div class="text-right">${result.replace(/\n/g, '<br>')}</div>`,
                 icon: 'info',
                 confirmButtonText: 'حسنًا',
                 background: 'var(--card-bg-light)',
@@ -616,10 +475,6 @@
             });
         };
 
-        /**
-         * Summarizes a given note using the Gemini API.
-         * @param {string} noteText - The text of the note to summarize.
-         */
         window.summarizeNote = async function(noteText) {
             Swal.fire({
                 title: 'جاري تلخيص الملاحظة ✨',
@@ -635,7 +490,7 @@
 
             Swal.fire({
                 title: 'ملخص الملاحظة ✨',
-                html: `<div class="text-right">${result.replace(/\n/g, '<br>')}</div>`, // Handle newlines
+                html: `<div class="text-right">${result.replace(/\n/g, '<br>')}</div>`,
                 icon: 'info',
                 confirmButtonText: 'حسنًا',
                 background: 'var(--card-bg-light)',
@@ -643,32 +498,27 @@
             });
         };
 
-        // Initialize the page once the DOM is fully loaded
+        // Initialize the application
         document.addEventListener('DOMContentLoaded', function() {
-            updateCurrentDateDisplay(); // Initial date update display
+            updateCurrentDateDisplay();
 
-            // Make dark mode the default, unless explicitly set to 'false'
             if (localStorage.getItem('darkMode') !== 'false') {
                 document.body.classList.add('dark-mode');
-                // Ensure the icon updates correctly on page load if dark mode is active
                 const moonIcon = document.querySelector('.sidebar-item i.fa-moon');
-                if (moonIcon) {
-                    moonIcon.classList.replace('fa-moon', 'fa-sun');
-                }
+                if (moonIcon) moonIcon.classList.replace('fa-moon', 'fa-sun');
             }
 
-            // Start Firebase authentication and UI logic (now direct anonymous/custom token sign-in)
             initializeAuthAndUI();
         });
     </script>
     <style>
-        /* Base styles for Cairo font and smooth transitions */
+        /* Base styles */
         * {
             font-family: 'Cairo', sans-serif;
-            box-sizing: border-box; /* Ensure consistent box model */
+            box-sizing: border-box;
         }
         :root {
-            --primary-color: #e30613; /* Original red */
+            --primary-color: #e30613;
             --secondary-color: #333;
             --pending-color: #f59e0b;
             --in-progress-color: #3b82f6;
@@ -689,7 +539,146 @@
             transition: background-color 0.3s ease, color 0.3s ease;
             min-height: 100vh;
             display: flex;
-            flex-direction: column; /* Ensure content stacks vertically */
+            flex-direction: column;
+        }
+
+        /* Login Page Styles */
+        #loginSection {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: var(--bg-light);
+            transition: background-color 0.3s ease;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1000;
+        }
+
+        .dark-mode #loginSection {
+            background-color: var(--bg-dark);
+        }
+
+        .login-container {
+            background-color: var(--card-bg-light);
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 450px;
+            transition: all 0.3s ease;
+            margin: 1rem;
+        }
+
+        .dark-mode .login-container {
+            background-color: var(--card-bg-dark);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .login-logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-logo img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--primary-color);
+        }
+
+        .login-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .login-subtitle {
+            font-size: 1rem;
+            color: var(--text-color-light);
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .dark-mode .login-subtitle {
+            color: var(--text-color-dark);
+        }
+
+        .login-form .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .login-form label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: var(--text-color-light);
+        }
+
+        .dark-mode .login-form label {
+            color: var(--text-color-dark);
+        }
+
+        .login-form input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border-color-light);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .dark-mode .login-form input {
+            background-color: var(--card-bg-dark);
+            border-color: var(--border-color-dark);
+            color: var(--text-color-dark);
+        }
+
+        .login-form input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 2px rgba(227, 6, 19, 0.2);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-btn:hover {
+            background-color: #c00511;
+        }
+
+        .login-btn i {
+            margin-left: 0.5rem;
+        }
+
+        .login-footer {
+            text-align: center;
+            margin-top: 1.5rem;
+            font-size: 0.875rem;
+            color: var(--text-color-light);
+        }
+
+        .dark-mode .login-footer {
+            color: var(--text-color-dark);
         }
 
         /* Dark Mode styles */
@@ -719,7 +708,7 @@
             border-color: var(--border-color-dark);
         }
         .dark-mode input:focus, .dark-mode select:focus {
-            border-color: var(--primary-color); /* Maintain highlight */
+            border-color: var(--primary-color);
         }
         .dark-mode .sidebar {
             background-color: #2d3748;
@@ -729,7 +718,7 @@
             background-color: #4a5568;
         }
         .dark-mode .status-pending {
-            filter: brightness(1.2); /* Slightly brighter for dark mode contrast */
+            filter: brightness(1.2);
         }
         .dark-mode .status-in-progress {
             filter: brightness(1.2);
@@ -743,10 +732,18 @@
             background-color: var(--primary-color);
             color: white;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-            padding: 1rem 1.5rem; /* Adjusted padding */
+            padding: 1rem 1.5rem;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 50;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         .navbar img {
-            border-radius: 8px; /* Slightly rounded logo */
+            border-radius: 8px;
         }
 
         /* Sidebar Styling */
@@ -768,32 +765,32 @@
             width: 200px;
         }
         .sidebar-item {
-            padding: 18px 15px; /* More padding */
+            padding: 18px 15px;
             display: flex;
             align-items: center;
             cursor: pointer;
             transition: background-color 0.3s ease, color 0.3s ease;
             white-space: nowrap;
             overflow: hidden;
-            border-radius: 8px; /* Rounded items */
-            margin: 5px 10px; /* Spacing between items */
+            border-radius: 8px;
+            margin: 5px 10px;
         }
         .sidebar-item:hover {
             background-color: var(--border-color-light);
-            color: var(--primary-color); /* Highlight text on hover */
+            color: var(--primary-color);
         }
         .sidebar-item i {
-            margin-left: 15px; /* More space for icon */
-            font-size: 1.4rem; /* Slightly larger icons */
-            color: var(--primary-color); /* Consistent icon color */
+            margin-left: 15px;
+            font-size: 1.4rem;
+            color: var(--primary-color);
             transition: color 0.3s ease;
         }
         .sidebar-item:hover i {
-            color: var(--primary-color); /* Keep primary color on hover */
+            color: var(--primary-color);
         }
         .sidebar-text {
             display: none;
-            font-weight: 600; /* Bolder text */
+            font-weight: 600;
         }
         .sidebar:hover .sidebar-text {
             display: inline;
@@ -801,15 +798,17 @@
 
         /* Main Content Area */
         .main-content {
-            margin-right: 70px; /* Space for the sidebar */
+            margin-right: 70px;
             transition: margin-right 0.3s ease-in-out;
-            padding: 1.5rem; /* Consistent padding */
-            flex-grow: 1; /* Allow content to grow and fill space */
-            width: calc(100% - 70px); /* Adjust width for fixed sidebar */
+            padding: 1.5rem;
+            flex-grow: 1;
+            width: calc(100% - 70px);
+            margin-top: 70px; /* Account for fixed navbar */
         }
+
         @media (max-width: 768px) {
             .sidebar {
-                width: 60px; /* Smaller sidebar on mobile */
+                width: 60px;
                 height: auto;
                 bottom: 0;
                 top: auto;
@@ -823,12 +822,12 @@
                 border-top-right-radius: 12px;
             }
             .sidebar:hover {
-                width: 100%; /* No hover expansion on mobile for full width bottom nav */
+                width: 100%;
             }
             .sidebar-item {
                 margin: 0;
                 padding: 10px 5px;
-                flex-direction: column; /* Stack icon and text */
+                flex-direction: column;
                 font-size: 0.8rem;
                 border-radius: 0;
             }
@@ -838,16 +837,16 @@
                 font-size: 1.2rem;
             }
             .sidebar-text {
-                display: block; /* Always show text on mobile for better usability */
+                display: block;
                 font-size: 0.75rem;
             }
             .sidebar:hover .sidebar-text {
                 display: block;
             }
             .main-content {
-                margin-right: 0; /* No right margin on mobile */
-                padding-bottom: 70px; /* Space for fixed bottom sidebar */
-                width: 100%; /* Full width on mobile */
+                margin-right: 0;
+                padding-bottom: 70px;
+                width: 100%;
             }
             .date-navigation {
                 flex-direction: column;
@@ -866,8 +865,8 @@
         /* Progress Bar */
         .progress-bar-container {
             background-color: #e0e0e0;
-            border-radius: 9999px; /* Tailwind's rounded-full */
-            height: 12px; /* Small height for progress bar */
+            border-radius: 9999px;
+            height: 12px;
             overflow: hidden;
             margin-top: 0.5rem;
         }
@@ -876,13 +875,13 @@
             height: 100%;
             width: 0%;
             transition: width 0.5s ease-in-out;
-            border-radius: 9999px; /* Inherit rounded-full */
+            border-radius: 9999px;
         }
         .dark-mode .progress-bar-container {
             background-color: #4a5568;
         }
 
-        /* Fade-in animation for new items */
+        /* Fade-in animation */
         .fade-in {
             animation: fadeIn 0.5s ease-out;
         }
@@ -891,10 +890,10 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Custom scrollbar for better aesthetics */
+        /* Custom scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
-            height: 8px; /* For horizontal scrollbars */
+            height: 8px;
         }
         ::-webkit-scrollbar-track {
             background: var(--bg-light);
@@ -916,15 +915,44 @@
         .dark-mode::-webkit-scrollbar-thumb:hover {
             background: #555;
         }
-
-        /* Login Page Specific Styles - Removed */
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
-    <!-- App Section (main content, now always visible) -->
-    <div id="appSection" class="flex-grow flex flex-col">
+    <!-- Login Section -->
+    <div id="loginSection" class="fixed inset-0 z-50">
+        <div class="login-container">
+            <div class="login-logo">
+                <img src="https://placehold.co/80x80/e30613/ffffff?text=SYM" alt="SYM Logo">
+            </div>
+            <h1 class="login-title">تسجيل الدخول</h1>
+            <p class="login-subtitle">الرجاء إدخال بيانات الاعتماد للوصول إلى النظام</p>
+            
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label for="loginEmail">البريد الإلكتروني</label>
+                    <input type="email" id="loginEmail" placeholder="أدخل بريدك الإلكتروني" value="kernani@symalgerie.dz" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="loginPassword">كلمة المرور</label>
+                    <input type="password" id="loginPassword" placeholder="أدخل كلمة المرور" value="halim123" required>
+                </div>
+                
+                <button type="submit" class="login-btn">
+                    <i class="fas fa-sign-in-alt ml-2"></i> تسجيل الدخول
+                </button>
+            </form>
+            
+            <div class="login-footer">
+                نظام إدارة المهام والملاحظات - SYM Algeria
+            </div>
+        </div>
+    </div>
+
+    <!-- App Section -->
+    <div id="appSection" class="flex-grow flex flex-col hidden">
         <!-- Navbar -->
-        <nav class="navbar flex justify-between items-center fixed top-0 left-0 w-full z-50">
+        <nav class="navbar flex justify-between items-center">
             <div class="flex items-center">
                 <img src="https://placehold.co/40x40/e30613/ffffff?text=SYM" alt="SYM Logo" class="w-10 h-10 rounded-full border-2 border-white">
                 <span class="text-xl font-bold mr-4">نظام إدارة المهام والملاحظات</span>
@@ -963,7 +991,7 @@
         </aside>
 
         <!-- Main Content -->
-        <main class="main-content pt-20 pb-16 flex flex-col flex-grow">
+        <main class="main-content pt-4 pb-16 flex flex-col flex-grow">
             <!-- Date Navigation -->
             <div class="date-navigation flex justify-center items-center mb-6 bg-white p-4 rounded-lg shadow-md border border-gray-200 dark:bg-gray-700 dark:border-gray-600">
                 <button onclick="goToPreviousDay()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded-full transition-colors duration-200 ml-2 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">
@@ -1012,7 +1040,7 @@
                 </div>
             </section>
 
-            <!-- Notes Section (hidden by default) -->
+            <!-- Notes Section -->
             <section id="notesSection" class="hidden flex-grow">
                 <div class="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-xl border border-gray-200 dark:border-gray-600 mb-6">
                     <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4 flex items-center">
@@ -1033,7 +1061,7 @@
                 </div>
             </section>
 
-            <!-- Ellipse Page Section (hidden by default) -->
+            <!-- Ellipse Page Section -->
             <section id="ellipseSection" class="hidden flex-grow">
                 <div class="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-xl border border-gray-200 dark:border-gray-600 mb-6">
                     <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4 flex items-center">
@@ -1043,7 +1071,7 @@
                 </div>
             </section>
 
-            <!-- Distribution Program Section (hidden by default) -->
+            <!-- Distribution Program Section -->
             <section id="distributionSection" class="hidden flex-grow">
                 <div class="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-xl border border-gray-200 dark:border-gray-600 mb-6">
                     <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4 flex items-center">
