@@ -12,7 +12,7 @@
     <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"; // Only keep necessary auth imports
         import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global variables for Firebase (MUST BE USED as per instructions)
@@ -22,13 +22,13 @@
 
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
+        const auth = getAuth(app); // Get auth instance
         const db = getFirestore(app);
 
         // Global variables for data storage and user management
         let tasks = [];
         let notes = [];
-        let userId = null; // Will be set after authentication
+        let userId = null; // Will be set after authentication or anonymously
         let isAuthReady = false; // Flag to ensure Firestore operations run after auth
         let currentFilterDate = new Date(); // Stores the currently selected date for filtering
 
@@ -37,106 +37,40 @@
         let notesCollectionRef;
 
         /**
-         * Initializes Firebase authentication and sets up the auth state listener.
+         * Initializes Firebase authentication (or anonymous sign-in) and sets up the auth state listener.
          * Once authenticated, it sets the userId and initializes Firestore references.
          * Handles showing/hiding the login page based on authentication status.
          */
         async function initializeAuthAndUI() {
-            onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    // User is signed in
-                    userId = user.uid;
-                    // Firestore paths are structured automatically by __app_id and userId
-                    tasksCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/tasks`);
-                    notesCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/notes`);
-                    isAuthReady = true; // Auth is ready, can load data
-                    document.getElementById('userIdDisplay').textContent = `ID: ${userId}`;
-                    
-                    document.getElementById('authSection').classList.add('hidden');
-                    document.getElementById('appSection').classList.remove('hidden');
-                    loadData(); // Load data after authentication is ready
-                    updateDbStatus('متصل', true); // Database connected
-                } else {
-                    // User is signed out
-                    userId = null;
-                    isAuthReady = false;
-                    document.getElementById('authSection').classList.remove('hidden');
-                    document.getElementById('appSection').classList.add('hidden');
-                    updateDbStatus('غير متصل', false); // Database disconnected
-                    // Attempt to sign in with custom token if available (Canvas environment)
-                    try {
-                        if (initialAuthToken) {
-                            await signInWithCustomToken(auth, initialAuthToken);
-                        } else {
-                            // If no initial token, the login form will handle sign-in
-                            console.log("No initial auth token, displaying login form.");
-                        }
-                    } catch (error) {
-                        console.error("Error with initial auth token or anonymous sign-in:", error);
-                        Swal.fire({
-                            icon: 'error',
-                            title: 'خطأ في المصادقة الأولية',
-                            text: 'فشل تسجيل الدخول التلقائي: ' + error.message,
-                            background: 'var(--card-bg-light)', // Ensure Swal theme matches
-                            color: 'var(--text-color-light)'
-                        });
-                    }
-                }
-            });
-        }
-
-        /**
-         * Handles user login with email and password.
-         * @param {string} email - The user's email.
-         * @param {string} password - The user's password.
-         */
-        async function loginUser(email, password) {
+            // Attempt to sign in with custom token if available (Canvas environment)
             try {
-                // Show loading spinner while authenticating
-                Swal.fire({
-                    title: 'جاري تسجيل الدخول...',
-                    html: '<i class="fas fa-spinner fa-spin text-4xl text-primary mt-4"></i>',
-                    allowOutsideClick: false,
-                    showConfirmButton: false,
-                    background: 'var(--card-bg-light)',
-                    color: 'var(--text-color-light)',
-                    willOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
-
-                await signInWithEmailAndPassword(auth, email, password);
-                
-                // Close loading spinner and show success
-                Swal.close();
-                Swal.fire({
-                    icon: 'success',
-                    title: 'تم تسجيل الدخول بنجاح!',
-                    text: 'مرحباً بك في نظام إدارة المهام والملاحظات.',
-                    showConfirmButton: false,
-                    timer: 1500,
-                    background: 'var(--card-bg-light)',
-                    color: 'var(--text-color-light)'
-                });
-            } catch (error) {
-                // Close loading spinner and show error
-                Swal.close();
-                console.error("Error signing in with email and password:", error);
-                
-                let errorMessage = 'خطأ في البريد الإلكتروني أو كلمة المرور. يرجى التأكد من إنشاء حسابك في Firebase Authentication.';
-                if (error.code === 'auth/operation-not-allowed') {
-                    errorMessage = 'عملية تسجيل الدخول هذه غير مسموح بها. الرجاء التأكد من تمكين طريقة تسجيل الدخول "البريد الإلكتروني/كلمة المرور" في إعدادات Firebase Authentication لمشروعك.';
-                } else if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-                    errorMessage = 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    // Sign in anonymously if no initial token is provided
+                    await signInAnonymously(auth);
                 }
-
+                // Once authenticated/anonymously signed in, set userId and proceed
+                userId = auth.currentUser?.uid || crypto.randomUUID(); // Use UID if authenticated, else random UUID
+                tasksCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/tasks`);
+                notesCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/notes`);
+                isAuthReady = true; // Auth is ready, can load data
+                document.getElementById('userIdDisplay').textContent = `ID: ${userId}`;
+                
+                // Show app section and load data
+                document.getElementById('appSection').classList.remove('hidden');
+                loadData();
+                updateDbStatus('متصل', true); // Database connected
+            } catch (error) {
+                console.error("Error with initial authentication/anonymous sign-in:", error);
                 Swal.fire({
                     icon: 'error',
-                    title: 'فشل تسجيل الدخول',
-                    text: errorMessage,
-                    background: 'var(--card-bg-light)',
+                    title: 'خطأ في الاتصال بالخدمات',
+                    text: 'فشل تهيئة التطبيق: ' + error.message + '. الرجاء إعادة تحميل الصفحة أو الاتصال بالدعم.',
+                    background: 'var(--card-bg-light)', // Ensure Swal theme matches
                     color: 'var(--text-color-light)'
                 });
+                updateDbStatus('غير متصل', false); // Database disconnected
             }
         }
 
@@ -155,7 +89,6 @@
                 statusElement.classList.add('text-red-500', 'font-bold');
             }
         }
-
 
         /**
          * Loads tasks and notes data from Firestore in real-time using onSnapshot listeners.
@@ -724,26 +657,8 @@
                 }
             }
 
-            // Start Firebase authentication and UI logic
+            // Start Firebase authentication and UI logic (now direct anonymous/custom token sign-in)
             initializeAuthAndUI();
-
-            // Handle login form submission
-            document.getElementById('loginForm').addEventListener('submit', async function(e) {
-                e.preventDefault();
-                const email = document.getElementById('loginEmail').value.trim();
-                const password = document.getElementById('loginPassword').value.trim();
-                if (email && password) {
-                    await loginUser(email, password);
-                } else {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'حقول فارغة',
-                        text: 'الرجاء إدخال البريد الإلكتروني وكلمة المرور.',
-                        background: 'var(--card-bg-light)', // Ensure Swal theme matches
-                        color: 'var(--text-color-light)'
-                    });
-                }
-            });
         });
     </script>
     <style>
@@ -1002,178 +917,12 @@
             background: #555;
         }
 
-        /* Login Page Specific Styles */
-        .auth-background {
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-color) 20%, #ff6b6b 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 1.5rem;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .auth-background::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0 20v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM6 34v-4h-2v4H0v2h2v4h2v-4h4v-2H6zm0 20v-4h-2v4H0v2h2v4h2v-4h4v-2H6zM36 0v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM6 0v-4h-2v4H0v2h2v4h2v-4h4v-2H6zM21 21v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm30 0v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM21 42v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM51 42v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM21 0v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM51 0v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-            background-size: 60px 60px;
-            opacity: 0.1;
-            z-index: 0;
-        }
-        .dark-mode .auth-background {
-            background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
-        }
-        .dark-mode .auth-background::before {
-            background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%236b7280' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0 20v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM6 34v-4h-2v4H0v2h2v4h2v-4h4v-2H6zm0 20v-4h-2v4H0v2h2v4h2v-4h4v-2H6zM36 0v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM6 0v-4h-2v4H0v2h2v4h2v-4h4v-2H6zM21 21v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm30 0v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM21 42v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM51 42v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM21 0v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM51 0v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-        }
-
-        .login-card {
-            background-color: var(--card-bg-light);
-            border-radius: 1.5rem; /* More rounded */
-            padding: 2.5rem; /* More padding */
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2); /* Stronger shadow */
-            position: relative;
-            z-index: 1;
-            width: 90%; /* Wider on small screens */
-            max-width: 480px; /* Slightly wider max-width */
-            border: 1px solid var(--border-color-light);
-            transition: all 0.3s ease-in-out;
-        }
-
-        .dark-mode .login-card {
-            border: 1px solid var(--border-color-dark);
-        }
-
-        .login-card h2 {
-            font-size: 2.5rem; /* Larger title */
-            margin-bottom: 1.5rem;
-            color: var(--primary-color); /* Title in primary color */
-            font-weight: 700;
-        }
-
-        .login-card label {
-            text-align: right;
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: var(--text-color-light);
-        }
-        .dark-mode .login-card label {
-            color: var(--text-color-dark);
-        }
-
-        .login-card input[type="email"],
-        .login-card input[type="password"] {
-            width: 100%;
-            padding: 1rem;
-            border-radius: 0.75rem; /* Rounded inputs */
-            border: 1px solid var(--border-color-light);
-            background-color: var(--bg-light);
-            color: var(--text-color-light);
-            transition: all 0.2s ease-in-out;
-        }
-
-        .dark-mode .login-card input[type="email"],
-        .dark-mode .login-card input[type="password"] {
-            background-color: #374151;
-            border-color: #4a5568;
-            color: var(--text-color-dark);
-        }
-
-        .login-card input:focus {
-            outline: none;
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb-val), 0.3); /* Custom focus ring */
-        }
-
-        .login-card button {
-            background-color: var(--primary-color);
-            color: white;
-            font-weight: 700;
-            padding: 1rem 1.5rem;
-            border-radius: 0.75rem; /* Rounded buttons */
-            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.2s ease;
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.125rem;
-        }
-
-        .login-card button:hover {
-            background-color: #c7040f; /* Darker red on hover */
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(var(--primary-color-rgb-val), 0.4);
-        }
-
-        .login-card .logo-container {
-            margin-bottom: 1.5rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .login-card .logo-container img {
-            width: 100px; /* Larger logo */
-            height: 100px;
-            border-radius: 50%;
-            border: 5px solid var(--primary-color);
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
-        }
-        .dark-mode .login-card .logo-container img {
-             border: 5px solid var(--primary-color);
-        }
-
-        .login-card .info-text {
-            margin-top: 1.5rem;
-            font-size: 0.9rem;
-            color: var(--text-color-light);
-            line-height: 1.5;
-        }
-        .dark-mode .login-card .info-text {
-            color: var(--text-color-dark);
-        }
-
-        /* Define RGB value for primary color to use in rgba() */
-        body {
-          --primary-color-rgb-val: 227, 6, 19; /* RGB for #e30613 */
-        }
+        /* Login Page Specific Styles - Removed */
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
-    <!-- Login Section -->
-    <div id="authSection" class="auth-background">
-        <div class="login-card">
-            <div class="logo-container">
-                <img src="https://placehold.co/100x100/e30613/ffffff?text=SYM" alt="SYM Logo">
-                <h2 class="text-3xl font-bold mt-4">مرحباً بك في SYM Algeria</h2>
-            </div>
-            <form id="loginForm" class="space-y-6">
-                <div>
-                    <label for="loginEmail">البريد الإلكتروني:</label>
-                    <input type="email" id="loginEmail" placeholder="أدخل بريدك الإلكتروني" value="kernani@symalgerie.dz" required>
-                </div>
-                <div>
-                    <label for="loginPassword">كلمة المرور:</label>
-                    <input type="password" id="loginPassword" placeholder="أدخل كلمة المرور" value="halim123" required>
-                </div>
-                <button type="submit">
-                    <i class="fas fa-sign-in-alt ml-2"></i> تسجيل الدخول
-                </button>
-            </form>
-            <p class="info-text">
-                <i class="fas fa-info-circle ml-1"></i> ملاحظة: يجب إنشاء هذا الحساب في Firebase Authentication ليتمكن من تسجيل الدخول.
-            </p>
-        </div>
-    </div>
-
-    <!-- App Section (main content, initially hidden) -->
-    <div id="appSection" class="hidden flex-grow flex flex-col">
+    <!-- App Section (main content, now always visible) -->
+    <div id="appSection" class="flex-grow flex flex-col">
         <!-- Navbar -->
         <nav class="navbar flex justify-between items-center fixed top-0 left-0 w-full z-50">
             <div class="flex items-center">
