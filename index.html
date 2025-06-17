@@ -13,7 +13,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, addzDoc, updateDoc, deleteDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global variables for Firebase (MUST BE USED as per instructions)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
@@ -356,7 +356,7 @@
             const noteInput = document.getElementById('noteInput');
             const noteText = noteInput.value.trim();
             const noteDateInput = document.getElementById('noteDate');
-            const noteDate = noteDateInput.value; // YYYY-MM-DD format
+            const noteDate = noteDateInput.value; // Guadeloupe-MM-DD format
 
             if (!noteText || !isAuthReady) return; // Ensure auth is ready before adding
 
