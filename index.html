@@ -46,6 +46,7 @@
                 if (user) {
                     // User is signed in
                     userId = user.uid;
+                    // Firestore paths are structured automatically by __app_id and userId
                     tasksCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/tasks`);
                     notesCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/notes`);
                     isAuthReady = true; // Auth is ready, can load data
@@ -492,12 +493,22 @@
          * @param {string} sectionId - The ID of the section to show ('tasksSection' or 'notesSection').
          */
         window.toggleSection = function(sectionId) { // Made global for onclick in HTML
+            // Hide all main sections first
             document.getElementById('tasksSection').classList.add('hidden');
             document.getElementById('notesSection').classList.add('hidden');
+            document.getElementById('ellipseSection').classList.add('hidden');
+            document.getElementById('distributionSection').classList.add('hidden');
+
+            // Show the requested section
             document.getElementById(sectionId).classList.remove('hidden');
-            // Re-filter and render data when switching sections
-            filterAndRenderTasks();
-            filterAndRenderNotes();
+
+            // Re-filter and render data when switching to Tasks or Notes
+            if (sectionId === 'tasksSection') {
+                filterAndRenderTasks();
+            } else if (sectionId === 'notesSection') {
+                filterAndRenderNotes();
+            }
+            // For new sections, you might want to load specific content if they have dynamic data
         };
 
         /**
@@ -643,10 +654,10 @@
         document.addEventListener('DOMContentLoaded', function() {
             updateCurrentDateDisplay(); // Initial date update display
 
-            // Apply dark mode if previously enabled
-            if (localStorage.getItem('darkMode') === 'true') {
+            // Make dark mode the default, unless explicitly set to 'false'
+            if (localStorage.getItem('darkMode') !== 'false') {
                 document.body.classList.add('dark-mode');
-                // Ensure the icon updates correctly on page load
+                // Ensure the icon updates correctly on page load if dark mode is active
                 const moonIcon = document.querySelector('.sidebar-item i.fa-moon');
                 if (moonIcon) {
                     moonIcon.classList.replace('fa-moon', 'fa-sun');
@@ -981,6 +992,14 @@
                     <span class="sidebar-text">الملاحظات</span>
                     <i class="fas fa-clipboard"></i>
                 </div>
+                <div class="sidebar-item" onclick="toggleSection('ellipseSection')">
+                    <span class="sidebar-text">القطع الناقصة</span>
+                    <i class="fas fa-bezier-curve"></i>
+                </div>
+                <div class="sidebar-item" onclick="toggleSection('distributionSection')">
+                    <span class="sidebar-text">برنامج التوزيع</span>
+                    <i class="fas fa-chart-pie"></i>
+                </div>
                 <div class="sidebar-item" onclick="toggleDarkMode()">
                     <span class="sidebar-text">وضع الليل</span>
                     <i class="fas fa-moon"></i>
@@ -1056,6 +1075,26 @@
                     <div id="notesList" class="space-y-4">
                         <!-- Notes will be loaded here -->
                     </div>
+                </div>
+            </section>
+
+            <!-- Ellipse Page Section (hidden by default) -->
+            <section id="ellipseSection" class="hidden flex-grow">
+                <div class="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-xl border border-gray-200 dark:border-gray-600 mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4 flex items-center">
+                        <i class="fas fa-bezier-curve ml-3 text-primary"></i> صفحة القطع الناقصة
+                    </h2>
+                    <p class="text-gray-700 dark:text-gray-300">هنا سيتم عرض محتوى صفحة القطع الناقصة. يمكنك إضافة أدوات حسابية أو رسومات هنا.</p>
+                </div>
+            </section>
+
+            <!-- Distribution Program Section (hidden by default) -->
+            <section id="distributionSection" class="hidden flex-grow">
+                <div class="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-xl border border-gray-200 dark:border-gray-600 mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4 flex items-center">
+                        <i class="fas fa-chart-pie ml-3 text-primary"></i> صفحة برنامج التوزيع
+                    </h2>
+                    <p class="text-gray-700 dark:text-gray-300">هنا سيتم عرض محتوى صفحة برنامج التوزيع. يمكن أن يتضمن هذا الرسوم البيانية للبيانات أو أدوات إدارة المخزون.</p>
                 </div>
             </section>
         </main>
