@@ -42,9 +42,6 @@
             padding: 0 20px;
         }
 
-        /* Header Styles */
-        /* Header is removed as per user request */
-
         /* Hero Section */
         .hero {
             background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('https://images.unsplash.com/photo-1558981806-ec527fa84c39?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80');
@@ -82,6 +79,13 @@
             animation: fadeInUp 1s ease-out 0.3s backwards; /* Animation with delay */
         }
 
+        .hero-logo {
+            max-width: 200px; /* Adjust logo size as needed */
+            height: auto;
+            margin-bottom: 20px;
+            animation: fadeIn 1s ease-out; /* Fade in animation for logo */
+        }
+
         .cta-button {
             display: inline-block;
             background-color: var(--primary-color);
@@ -116,6 +120,10 @@
         @keyframes zoomIn {
             from { opacity: 0; transform: scale(0.8); }
             to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
         /* Slider Section */
@@ -214,26 +222,35 @@
         }
 
         .model-price-container {
-            display: flex;
-            align-items: center;
+            display: block; /* تغيير العرض إلى block للسماح بالعناصر بالظهور في أسطر منفصلة */
             margin-bottom: 15px; /* تم تصغير المسافة السفلية */
+        }
+
+        .price-label { /* ستايل جديد لكلمة "ابتداء من" */
+            display: block; /* لجعله في سطر منفصل */
+            font-size: 18px; /* حجم أصغر من السعر */
+            color: var(--light-text);
+            margin-bottom: 5px; /* مسافة بين "ابتداء من" والسعر */
+            font-weight: 600;
         }
 
         .model-price {
             font-size: 28px; /* تم تصغير حجم السعر */
             font-weight: 800;
             color: var(--primary-color);
-            margin-left: 10px; /* تم تصغير الهامش */
+            margin-left: 0; /* إزالة الهامش الأيسر بعد أن أصبح في سطر منفصل */
+            display: inline-block; /* لجعله يبقى في نفس سطر السعر القديم إذا وجد */
         }
 
         .model-old-price {
             font-size: 18px; /* تم تصغير حجم السعر القديم */
             color: var(--light-text);
             text-decoration: line-through;
+            display: inline-block; /* لجعله يبقى في نفس سطر السعر الجديد */
+            margin-right: 10px; /* إضافة مسافة بين السعر الجديد والقديم */
         }
 
         .price-per-month {
-            /* Removed as per user request */
             display: none; /* Hide the element if still present in HTML for safety */
         }
 
@@ -271,13 +288,11 @@
         }
 
         .model-actions {
-            /* تم حذف هذا القسم بالكامل */
-            display: none;
+            display: none; /* تم حذف هذا القسم بالكامل */
         }
 
         .details-btn, .finance-btn {
-            /* تم حذف هذا القسم بالكامل */
-            display: none;
+            display: none; /* تم حذف هذا القسم بالكامل */
         }
 
         .swiper-button-next,
@@ -366,8 +381,6 @@
             font-size: 17px; /* Larger text */
         }
 
-        /* Footer - Removed */
-
         /* Responsive Styles */
         @media (max-width: 992px) {
             .hero h1 {
@@ -406,12 +419,10 @@
             }
             
             .model-actions {
-                /* تم حذف هذا القسم بالكامل في الأجهزة الصغيرة */
                 display: none;
             }
             
             .details-btn, .finance-btn {
-                /* تم حذف هذا القسم بالكامل في الأجهزة الصغيرة */
                 display: none;
             }
 
@@ -476,7 +487,9 @@
     <section class="hero">
         <div class="container">
             <div class="hero-content">
-                <h1>أفضل الدراجات النارية في الجزائر</h1>
+                <!-- شعار الشركة -->
+                <img src="https://www.hbscooters.com/uploads/5/1/6/3/5163697/symlogo_orig.png" alt="شعار سيم" class="hero-logo">
+                <h1>مرحبا بكم في سيم الجزائر</h1>
                 <p>اكتشف مجموعة واسعة من الدراجات النارية الفاخرة والرياضية بأفضل الأسعار</p>
                 <a href="#" class="cta-button">تصفح الموديلات</a>
             </div>
@@ -505,6 +518,7 @@
                             <h3 class="model-title">هارلي ديفيدسون سبورتستر 1200</h3>
                             
                             <div class="model-price-container">
+                                <span class="price-label">ابتداء من :</span>
                                 <span class="model-price">1,450,000 د.ج</span>
                                 <span class="model-old-price">1,550,000 د.ج</span>
                             </div>
@@ -522,12 +536,7 @@
                                     </div>
                                     <span class="spec-text">القوة: <span class="highlight">67 حصان</span></span>
                                 </div>
-                                <div class="spec-item">
-                                    <div class="spec-icon">
-                                        <i class="fas fa-gas-pump"></i>
-                                    </div>
-                                    <span class="spec-text">استهلاك الوقود: <span class="highlight">5.5 لتر/100كم</span></span>
-                                </div>
+                                <!-- تم حذف استهلاك الوقود -->
                             </div>
                             
                         </div>
@@ -542,6 +551,7 @@
                             <h3 class="model-title">هوندا CBR 1000RR</h3>
                             
                             <div class="model-price-container">
+                                <span class="price-label">ابتداء من :</span>
                                 <span class="model-price">1,850,000 د.ج</span>
                             </div>
                             
@@ -558,12 +568,7 @@
                                     </div>
                                     <span class="spec-text">القوة: <span class="highlight">189 حصان</span></span>
                                 </div>
-                                <div class="spec-item">
-                                    <div class="spec-icon">
-                                        <i class="fas fa-gas-pump"></i>
-                                    </div>
-                                    <span class="spec-text">استهلاك الوقود: <span class="highlight">6.2 لتر/100كم</span></span>
-                                </div>
+                                <!-- تم حذف استهلاك الوقود -->
                             </div>
                             
                         </div>
@@ -579,6 +584,7 @@
                             <h3 class="model-title">ياماها YZF-R1 2023</h3>
                             
                             <div class="model-price-container">
+                                <span class="price-label">ابتداء من :</span>
                                 <span class="model-price">2,150,000 د.ج</span>
                             </div>
                             
@@ -595,12 +601,7 @@
                                     </div>
                                     <span class="spec-text">القوة: <span class="highlight">200 حصان</span></span>
                                 </div>
-                                <div class="spec-item">
-                                    <div class="spec-icon">
-                                        <i class="fas fa-gas-pump"></i>
-                                    </div>
-                                    <span class="spec-text">استهلاك الوقود: <span class="highlight">6.5 لتر/100كم</span></span>
-                                </div>
+                                <!-- تم حذف استهلاك الوقود -->
                             </div>
                             
                         </div>
@@ -615,6 +616,7 @@
                             <h3 class="model-title">كاواساكي نينجا H2R</h3>
                             
                             <div class="model-price-container">
+                                <span class="price-label">ابتداء من :</span>
                                 <span class="model-price">3,750,000 د.ج</span>
                             </div>
                             
@@ -631,12 +633,7 @@
                                     </div>
                                     <span class="spec-text">القوة: <span class="highlight">310 حصان</span></span>
                                 </div>
-                                <div class="spec-item">
-                                    <div class="spec-icon">
-                                        <i class="fas fa-gas-pump"></i>
-                                    </div>
-                                    <span class="spec-text">استهلاك الوقود: <span class="highlight">7.2 لتر/100كم</span></span>
-                                </div>
+                                <!-- تم حذف استهلاك الوقود -->
                             </div>
                             
                         </div>
@@ -652,6 +649,7 @@
                             <h3 class="model-title">دوكاتي بانيجالي V4</h3>
                             
                             <div class="model-price-container">
+                                <span class="price-label">ابتداء من :</span>
                                 <span class="model-price">2,850,000 د.ج</span>
                                 <span class="model-old-price">3,050,000 د.ج</span>
                             </div>
@@ -669,12 +667,7 @@
                                     </div>
                                     <span class="spec-text">القوة: <span class="highlight">214 حصان</span></span>
                                 </div>
-                                <div class="spec-item">
-                                    <div class="spec-icon">
-                                        <i class="fas fa-gas-pump"></i>
-                                    </div>
-                                    <span class="spec-text">استهلاك الوقود: <span class="highlight">6.8 لتر/100كم</span></span>
-                                </div>
+                                <!-- تم حذف استهلاك الوقود -->
                             </div>
                             
                         </div>
@@ -689,6 +682,7 @@
                             <h3 class="model-title">بي ام دبليو S1000RR</h3>
                             
                             <div class="model-price-container">
+                                <span class="price-label">ابتداء من :</span>
                                 <span class="model-price">2,450,000 د.ج</span>
                             </div>
                             
@@ -705,12 +699,7 @@
                                     </div>
                                     <span class="spec-text">القوة: <span class="highlight">205 حصان</span></span>
                                 </div>
-                                <div class="spec-item">
-                                    <div class="spec-icon">
-                                        <i class="fas fa-gas-pump"></i>
-                                    </div>
-                                    <span class="spec-text">استهلاك الوقود: <span class="highlight">6.0 لتر/100كم</span></span>
-                                </div>
+                                <!-- تم حذف استهلاك الوقود -->
                             </div>
                             
                         </div>
@@ -733,13 +722,7 @@
                 <h2>لماذا تختار دراجاتي؟</h2>
             </div>
             <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-dollar-sign"></i>
-                    </div>
-                    <h3 class="feature-title">أفضل الأسعار</h3>
-                    <p class="feature-desc">نقدم أسعارًا تنافسية وعروضًا خاصة بانتظام لضمان حصولك على أفضل صفقة.</p>
-                </div>
+                <!-- تم حذف "أفضل الأسعار" -->
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="fas fa-motorcycle"></i>
