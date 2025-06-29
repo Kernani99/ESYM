@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>أسعار الدراجات النارية</title>
+    <title>أسعار الدراجات النارية - SYM الجزائر</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Swiper/9.0.5/swiper-bundle.min.css">
+    <link rel="icon" href="https://www.sym-global.com/favicon.ico" type="image/x-icon">
     <style>
         :root {
             --primary-color: #D62D20;
@@ -33,7 +34,8 @@
             background-color: var(--light-bg);
             color: var(--dark-text);
             line-height: 1.6;
-            overflow-x: hidden; /* Prevent horizontal scroll */
+            overflow-x: hidden;
+            padding-bottom: 80px;
         }
 
         .container {
@@ -47,61 +49,61 @@
             background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url('https://www.sym-global.com/storage/system/Wallpapers/2025-MAR/adx300-wallpaper.png');
             background-size: cover;
             background-position: center;
-            height: 600px; /* Slightly taller hero */
+            height: 600px;
             display: flex;
             align-items: center;
-            justify-content: center; /* Center content horizontally */
+            justify-content: center;
             color: var(--white);
             text-align: center;
-            position: relative; /* For potential animations */
-            overflow: hidden; /* Ensure content stays within */
+            position: relative;
+            overflow: hidden;
         }
 
         .hero-content {
             max-width: 800px;
             margin: 0 auto;
             position: relative;
-            z-index: 1; /* Ensure content is above any overlays */
+            z-index: 1;
         }
 
         .hero h1 {
-            font-size: 56px; /* Larger heading */
+            font-size: 56px;
             margin-bottom: 25px;
-            font-weight: 900; /* Bolder font */
-            text-shadow: 2px 2px 8px rgba(0,0,0,0.5); /* Text shadow for better readability */
-            animation: fadeInDown 1s ease-out; /* Animation */
+            font-weight: 900;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+            animation: fadeInDown 1s ease-out;
         }
 
         .hero p {
-            font-size: 22px; /* Larger paragraph */
+            font-size: 22px;
             margin-bottom: 40px;
             opacity: 0.9;
-            animation: fadeInUp 1s ease-out 0.3s backwards; /* Animation with delay */
+            animation: fadeInUp 1s ease-out 0.3s backwards;
         }
 
         .hero-logo {
-            max-width: 200px; /* Adjust logo size as needed */
+            max-width: 200px;
             height: auto;
             margin-bottom: 20px;
-            animation: fadeIn 1s ease-out; /* Fade in animation for logo */
+            animation: fadeIn 1s ease-out;
         }
 
         .cta-button {
             display: inline-block;
             background-color: var(--primary-color);
             color: var(--white);
-            padding: 18px 45px; /* Larger padding */
+            padding: 18px 45px;
             border-radius: 50px;
             text-decoration: none;
             font-weight: 700;
-            font-size: 20px; /* Larger font size */
+            font-size: 20px;
             transition: var(--transition);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2); /* Stronger shadow */
-            animation: zoomIn 1s ease-out 0.6s backwards; /* Animation with delay */
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+            animation: zoomIn 1s ease-out 0.6s backwards;
         }
 
         .cta-button:hover {
-            transform: translateY(-5px) scale(1.05); /* More pronounced hover */
+            transform: translateY(-5px) scale(1.05);
             box-shadow: 0 15px 25px rgba(0, 0, 0, 0.3);
             background-color: #c0251b;
         }
@@ -139,19 +141,19 @@
         }
 
         .section-title h2 {
-            font-size: 42px; /* Larger title */
+            font-size: 42px;
             color: var(--secondary-color);
             display: inline-block;
             position: relative;
             padding-bottom: 15px;
-            font-weight: 900; /* Bolder */
+            font-weight: 900;
         }
 
         .section-title h2::after {
             content: '';
             position: absolute;
-            width: 100px; /* Longer underline */
-            height: 4px; /* Thicker underline */
+            width: 100px;
+            height: 4px;
             background: var(--primary-color);
             bottom: 0;
             right: 50%;
@@ -170,9 +172,9 @@
             overflow: hidden;
             box-shadow: var(--shadow);
             transition: var(--transition);
-            /* ضبط ارتفاع مربع عرض الدراجة النارية لجعله أصغر */
-            height: auto; /* السماح بالارتفاع التلقائي بناءً على المحتوى الجديد */
-            max-height: 450px; /* تحديد أقصى ارتفاع لجعله أصغر */
+            height: auto;
+            display: flex;
+            flex-direction: column;
         }
 
         .swiper-slide:hover {
@@ -186,17 +188,18 @@
             left: 20px;
             background-color: var(--primary-color);
             color: var(--white);
-            padding: 8px 18px; /* Larger badge */
+            padding: 8px 18px;
             border-radius: 50px;
             font-weight: 700;
-            font-size: 16px; /* Larger font */
+            font-size: 16px;
             z-index: 2;
         }
 
         .model-image {
-            height: 180px; /* تم تصغير ارتفاع الصورة */
+            height: 200px;
             overflow: hidden;
             position: relative;
+            flex-shrink: 0;
         }
 
         .model-image img {
@@ -211,94 +214,86 @@
         }
 
         .model-info {
-            padding: 20px; /* تم تصغير التبطين */
+            padding: 20px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
         }
 
         .model-title {
-            font-size: 24px; /* تم تصغير حجم العنوان */
+            font-size: 24px;
             margin-bottom: 10px;
             color: var(--secondary-color);
             font-weight: 700;
         }
 
         .model-price-container {
-            display: block; /* تغيير العرض إلى block للسماح بالعناصر بالظهور في أسطر منفصلة */
-            margin-bottom: 15px; /* تم تصغير المسافة السفلية */
+            display: block;
+            margin-bottom: 15px;
         }
 
-        .price-label { /* ستايل جديد لكلمة "ابتداء من" */
-            display: block; /* لجعله في سطر منفصل */
-            font-size: 18px; /* حجم أصغر من السعر */
+        .price-label {
+            display: block;
+            font-size: 18px;
             color: var(--light-text);
-            margin-bottom: 5px; /* مسافة بين "ابتداء من" والسعر */
+            margin-bottom: 5px;
             font-weight: 600;
         }
 
         .model-price {
-            font-size: 28px; /* تم تصغير حجم السعر */
+            font-size: 28px;
             font-weight: 800;
             color: var(--primary-color);
-            margin-left: 0; /* إزالة الهامش الأيسر بعد أن أصبح في سطر منفصل */
-            display: inline-block; /* لجعله يبقى في نفس سطر السعر القديم إذا وجد */
+            margin-left: 0;
+            display: inline-block;
         }
 
         .model-old-price {
-            font-size: 18px; /* تم تصغير حجم السعر القديم */
+            font-size: 18px;
             color: var(--light-text);
             text-decoration: line-through;
-            display: inline-block; /* لجعله يبقى في نفس سطر السعر الجديد */
-            margin-right: 10px; /* إضافة مسافة بين السعر الجديد والقديم */
-        }
-
-        .price-per-month {
-            display: none; /* Hide the element if still present in HTML for safety */
+            display: inline-block;
+            margin-right: 10px;
         }
 
         .model-specs {
-            margin-bottom: 20px; /* تم تصغير المسافة السفلية */
+            margin-bottom: 20px;
+            flex-grow: 1;
         }
 
         .spec-item {
             display: flex;
-            margin-bottom: 10px; /* تم تصغير المسافة السفلية */
+            margin-bottom: 10px;
             align-items: center;
         }
 
         .spec-icon {
-            width: 24px; /* تم تصغير حجم الأيقونة */
+            width: 24px;
             height: 24px;
             background-color: #EDF2F7;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-left: 10px; /* تم تصغير الهامش */
+            margin-left: 10px;
             color: var(--secondary-color);
-            font-size: 16px; /* تم تصغير حجم الأيقونة */
+            font-size: 16px;
         }
 
         .spec-text {
             color: var(--light-text);
-            font-size: 15px; /* تم تصغير حجم النص */
+            font-size: 15px;
         }
 
         .highlight {
             color: var(--secondary-color);
-            font-weight: 600; /* تم تصغير وزن الخط */
-        }
-
-        .model-actions {
-            display: none; /* تم حذف هذا القسم بالكامل */
-        }
-
-        .details-btn, .finance-btn {
-            display: none; /* تم حذف هذا القسم بالكامل */
+            font-weight: 600;
         }
 
         .swiper-button-next,
         .swiper-button-prev {
             background-color: var(--white);
-            width: 60px; /* Larger buttons */
+            width: 60px;
             height: 60px;
             border-radius: 50%;
             box-shadow: var(--shadow);
@@ -308,7 +303,7 @@
 
         .swiper-button-next::after,
         .swiper-button-prev::after {
-            font-size: 24px; /* Larger arrows */
+            font-size: 24px;
             font-weight: bold;
         }
 
@@ -319,7 +314,7 @@
         }
 
         .swiper-pagination-bullet {
-            width: 14px; /* Larger bullets */
+            width: 14px;
             height: 14px;
             background-color: #CBD5E0;
             opacity: 1;
@@ -331,33 +326,33 @@
 
         /* Features Section */
         .features {
-            padding: 80px 0; /* More padding */
+            padding: 80px 0;
             background-color: var(--white);
         }
 
         .features-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Larger min width */
-            gap: 40px; /* More gap */
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 40px;
             margin-top: 50px;
         }
 
         .feature-card {
             background-color: var(--light-bg);
-            padding: 35px; /* More padding */
-            border-radius: 15px; /* More rounded */
+            padding: 35px;
+            border-radius: 15px;
             text-align: center;
             transition: var(--transition);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.08); /* Subtle shadow */
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
         }
 
         .feature-card:hover {
-            transform: translateY(-8px); /* More pronounced hover */
-            box-shadow: 0 15px 25px rgba(0, 0, 0, 0.15); /* Stronger shadow on hover */
+            transform: translateY(-8px);
+            box-shadow: 0 15px 25px rgba(0, 0, 0, 0.15);
         }
 
         .feature-icon {
-            width: 80px; /* Larger icon container */
+            width: 80px;
             height: 80px;
             background-color: var(--primary-color);
             color: var(--white);
@@ -365,12 +360,12 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 25px; /* More margin */
-            font-size: 36px; /* Larger icon */
+            margin: 0 auto 25px;
+            font-size: 36px;
         }
 
         .feature-title {
-            font-size: 24px; /* Larger title */
+            font-size: 24px;
             margin-bottom: 18px;
             color: var(--secondary-color);
             font-weight: 700;
@@ -378,7 +373,41 @@
 
         .feature-desc {
             color: var(--light-text);
-            font-size: 17px; /* Larger text */
+            font-size: 17px;
+        }
+
+        /* Fixed Request Button */
+        .fixed-request-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px;
+            border-radius: 50px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .fixed-request-btn:hover {
+            background-color: #c0251b;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .fixed-request-btn i {
+            margin-left: 10px;
         }
 
         /* Responsive Styles */
@@ -417,32 +446,25 @@
             .swiper {
                 padding: 20px 0 40px;
             }
-            
-            .model-actions {
-                display: none;
+
+            .swiper-slide {
+                width: 85% !important;
+                margin: 0 auto;
+                min-height: 400px;
             }
             
-            .details-btn, .finance-btn {
-                display: none;
+            .swiper-slide-next {
+                opacity: 0.7;
+                transform: scale(0.95);
+            }
+            
+            .model-image {
+                height: 200px;
             }
 
             .swiper-button-next,
             .swiper-button-prev {
-                width: 45px;
-                height: 45px;
-            }
-
-            .swiper-button-next::after,
-            .swiper-button-prev::after {
-                font-size: 20px;
-            }
-
-            .features-grid {
-                grid-template-columns: 1fr; /* Single column on small screens */
-            }
-
-            .swiper-slide {
-                max-height: none; /* إزالة الحد الأقصى للارتفاع في الأجهزة الصغيرة للسماح للمحتوى بالتمدد */
+                display: none;
             }
         }
 
@@ -472,12 +494,9 @@
                 font-size: 14px;
             }
 
-            .model-image {
-                height: 160px; /* تصغير أكثر على الجوال */
-            }
-
-            .model-info {
-                padding: 15px;
+            .fixed-request-btn {
+                font-size: 16px;
+                padding: 12px 15px;
             }
         }
     </style>
@@ -487,17 +506,16 @@
     <section class="hero">
         <div class="container">
             <div class="hero-content">
-                <!-- شعار الشركة -->
                 <img src="https://www.hbscooters.com/uploads/5/1/6/3/5163697/symlogo_orig.png" alt="شعار سيم" class="hero-logo">
                 <h1>مرحبا بكم في سيم الجزائر</h1>
                 <p>اكتشف مجموعة واسعة من الدراجات النارية الفاخرة والرياضية بأفضل الأسعار</p>
-                <a href="#" class="cta-button">تصفح الموديلات</a>
+                <a href="#prices" class="cta-button">تصفح الموديلات</a>
             </div>
         </div>
     </section>
 
     <!-- Slider Section -->
-    <section class="slider-section">
+    <section class="slider-section" id="prices">
         <div class="container">
             <div class="section-title">
                 <h2>أســعارنا</h2>
@@ -535,7 +553,6 @@
                                     </div>
                                     <span class="spec-text">حجم الأسطوانة <span class="highlight">150CC</span></span>
                                 </div>
-                                <!-- تم حذف استهلاك الوقود -->
                             </div>
                             
                         </div>
@@ -567,7 +584,6 @@
                                     </div>
                                     <span class="spec-text">حجم الأسطوانة: <span class="highlight">150CC</span></span>
                                 </div>
-                                <!-- تم حذف استهلاك الوقود -->
                             </div>
                             
                         </div>
@@ -600,7 +616,6 @@
                                     </div>
                                     <span class="spec-text">حجم الاسطوانة: <span class="highlight">150CC</span></span>
                                 </div>
-                                <!-- تم حذف استهلاك الوقود -->
                             </div>
                             
                         </div>
@@ -632,7 +647,6 @@
                                     </div>
                                     <span class="spec-text">حجم الأسطوانة: <span class="highlight">150CC</span></span>
                                 </div>
-                                <!-- تم حذف استهلاك الوقود -->
                             </div>
                             
                         </div>
@@ -665,7 +679,6 @@
                                     </div>
                                     <span class="spec-text">حجم الأسطوانة: <span class="highlight">110CC</span></span>
                                 </div>
-                                <!-- تم حذف استهلاك الوقود -->
                             </div>
                             
                         </div>
@@ -673,8 +686,7 @@
                     
                     <!-- Model 6 -->
                     <div class="swiper-slide">
-                                                <span class="model-badge">قريبا !!</span>
-
+                        <span class="model-badge">قريبا !!</span>
                         <div class="model-image">
                             <img src="https://i.imgur.com/kZrn95X.jpeg" alt="SYM ST">
                         </div>
@@ -698,7 +710,6 @@
                                     </div>
                                     <span class="spec-text">حجم الأسطوانة: <span class="highlight">200CC</span></span>
                                 </div>
-                                <!-- تم حذف استهلاك الوقود -->
                             </div>
                             
                         </div>
@@ -721,7 +732,6 @@
                 <h2>لماذا تختارنا ؟</h2>
             </div>
             <div class="features-grid">
-                <!-- تم حذف "أفضل الأسعار" -->
                 <div class="feature-card">
                     <div class="feature-icon">
                         <i class="fas fa-motorcycle"></i>
@@ -747,46 +757,56 @@
         </div>
     </section>
 
+    <!-- Fixed Request Button -->
+    <div class="fixed-request-btn" onclick="window.location.href='#request-form'">
+        <i class="fas fa-motorcycle"></i> طلب دراجة نارية
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Swiper/9.0.5/swiper-bundle.min.js"></script>
     <script>
         const swiper = new Swiper('.swiper', {
-            // Optional parameters
             direction: 'horizontal',
             loop: true,
-            slidesPerView: 1,
-            spaceBetween: 30,
+            slidesPerView: 'auto',
+            centeredSlides: true,
+            spaceBetween: 20,
             autoplay: {
                 delay: 3000,
                 disableOnInteraction: false,
             },
-
-            // If we need pagination
             pagination: {
                 el: '.swiper-pagination',
                 clickable: true,
             },
-
-            // Navigation arrows
             navigation: {
                 nextEl: '.swiper-button-next',
                 prevEl: '.swiper-button-prev',
             },
-
-            // Responsive breakpoints
             breakpoints: {
                 640: {
                     slidesPerView: 1,
                     spaceBetween: 20,
+                    centeredSlides: true
                 },
                 768: {
-                    slidesPerView: 2,
-                    spaceBetween: 40,
+                    slidesPerView: 1.2,
+                    spaceBetween: 30,
+                    centeredSlides: true
                 },
                 1024: {
                     slidesPerView: 3,
-                    spaceBetween: 50,
-                },
+                    spaceBetween: 30,
+                    centeredSlides: false
+                }
             }
+        });
+
+        // Smooth scroll for the CTA button
+        document.querySelector('.cta-button').addEventListener('click', function(e) {
+            e.preventDefault();
+            document.querySelector(this.getAttribute('href')).scrollIntoView({
+                behavior: 'smooth'
+            });
         });
     </script>
 </body>
